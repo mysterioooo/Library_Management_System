@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Issue History</title>
+
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+
+        body{
+            background:#f5f7fb;
+            margin:0;
+            font-family:Arial,sans-serif;
+        }
+
+        .topbar{
+            background:#2563eb;
+            color:white;
+            padding:15px 25px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+        }
+
+        .container{
+            padding:25px;
+        }
+
+        .card{
+            background:white;
+            padding:20px;
+            border-radius:12px;
+            box-shadow:0 4px 12px rgba(0,0,0,.08);
+            margin-bottom:20px;
+        }
+
+        .row{
+            display:flex;
+            gap:10px;
+            flex-wrap:wrap;
+        }
+
+        input{
+            padding:10px;
+            border:1px solid #ddd;
+            border-radius:8px;
+            min-width:250px;
+        }
+
+        button{
+            background:#2563eb;
+            color:white;
+            border:none;
+            padding:10px 16px;
+            border-radius:8px;
+            cursor:pointer;
+        }
+
+        button:hover{
+            background:#1d4ed8;
+        }
+
+        table{
+            width:100%;
+            border-collapse:collapse;
+            margin-top:15px;
+        }
+
+        th,td{
+            border:1px solid #e5e7eb;
+            padding:12px;
+            text-align:left;
+        }
+
+        th{
+            background:#eff6ff;
+        }
+
+        .status-issued{
+            color:#d97706;
+            font-weight:bold;
+        }
+
+        .status-returned{
+            color:#16a34a;
+            font-weight:bold;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+
+    <h2>Issue History</h2>
+
+    <button onclick="goDashboard()">
+        Dashboard
+    </button>
+
+</div>
+
+<div class="container">
+
+    <div class="card">
+
+        <h3>Search User History</h3>
+
+        <div class="row">
+
+            <input
+                    id="userId"
+                    type="number"
+                    placeholder="Enter User ID">
+
+            <button onclick="loadHistory()">
+                Search
+            </button>
+
+        </div>
+
+    </div>
+
+    <div class="card">
+
+        <h3>Issued Books</h3>
+
+        <table>
+
+            <thead>
+
+            <tr>
+                <th>Issue ID</th>
+                <th>Book</th>
+                <th>User</th>
+                <th>Issue Date</th>
+                <th>Due Date</th>
+                <th>Return Date</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+
+            </thead>
+
+            <tbody id="historyBody">
+
+            <tr>
+                <td colspan="7"
+                    style="text-align:center">
+                    Search a User ID
+                </td>
+            </tr>
+
+            </tbody>
+
+        </table>
+        <div id="pagination"
+             style="margin-top:20px;text-align:center;">
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+    const API_BASE = "http://localhost:8080/api";
+
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
+
+    let allHistory = [];
+    let currentPage = 1;
+    const recordsPerPage = 10;
+
+    if(!token){
+        location.href = "index.html";
+    }
+
+    if(
+        role !== "ROLE_ADMIN" &&
+        role !== "ROLE_LIBRARIAN"
+    ){
+        alert("Access Denied");
+        goDashboard();
+    }
+
+    async function loadHistory(){
+
+        try{
+
+            const userId =
+                document.getElementById("userId").value;
+
+            let url =
+                `${API_BASE}/issues`;
+
+            if(userId){
+                url =
+                    `${API_BASE}/issues/history/${userId}`;
+            }
+
+            const response =
+                await fetch(
+                    url,
+                    {
+                        headers:{
+                            "Authorization":
+                                "Bearer " + token
+                        }
+                    });
+
+            if(!response.ok){
+
+                throw new Error(
+                    "Failed to load history"
+                );
+            }
+
+            allHistory =
+                await response.json();
+
+            allHistory.sort(
+                (a,b) => b.id - a.id
+            );
+
+            currentPage = 1;
+
+            renderHistory();
+
+        }catch(error){
+
+            console.error(error);
+
+            alert(
+                error.message ||
+                "Unable to load history"
+            );
+        }
+    }
+
+    function renderHistory(){
+
+        let html = "";
+
+        if(
+            !allHistory ||
+            allHistory.length === 0
+        ){
+
+            document.getElementById(
+                "historyBody"
+            ).innerHTML = `
+            <tr>
+                <td colspan="8"
+                    style="text-align:center">
+                    No Records Found
+                </td>
+            </tr>
+            `;
+
+            document.getElementById(
+                "pagination"
+            ).innerHTML = "";
+
+            return;
+        }
+
+        const start =
+            (currentPage - 1)
+            * recordsPerPage;
+
+        const end =
+            start + recordsPerPage;
+
+        const pageData =
+            allHistory.slice(start,end);
+
+        pageData.forEach(issue => {
+
+            const statusClass =
+                issue.returnDate
+                ? "status-returned"
+                : "status-issued";
+
+            const status =
+                issue.returnDate
+                ? "RETURNED"
+                : "ISSUED";
+
+            html += `
+            <tr>
+
+                <td>${issue.id}</td>
+
+                <td>
+                    ${issue.book?.title ?? "-"}
+                </td>
+
+                <td>
+                    ${issue.user?.name ?? "-"}
+                </td>
+
+                <td>
+                    ${issue.issueDate ?? "-"}
+                </td>
+
+                <td>
+                    ${issue.dueDate ?? "-"}
+                </td>
+
+                <td>
+                    ${issue.returnDate ?? "-"}
+                </td>
+
+                <td class="${statusClass}">
+                    ${status}
+                </td>
+
+                <td>
+
+                    ${
+                        !issue.returnDate
+                        ?
+                        `
+                        <button
+                            onclick="returnBook(${issue.id})">
+                            Return
+                        </button>
+                        `
+                        :
+                        "Completed"
+                    }
+
+                </td>
+
+            </tr>
+            `;
+        });
+
+        document.getElementById(
+            "historyBody"
+        ).innerHTML = html;
+
+        renderPagination();
+    }
+
+    function renderPagination(){
+
+        const totalPages =
+            Math.ceil(
+                allHistory.length /
+                recordsPerPage
+            );
+
+        let html = "";
+
+        html += `
+        <button
+            onclick="changePage(${currentPage-1})"
+            ${currentPage===1 ? "disabled" : ""}>
+            Previous
+        </button>
+        `;
+
+        for(
+            let i=1;
+            i<=totalPages;
+            i++
+        ){
+
+            html += `
+            <button
+                onclick="changePage(${i})"
+                style="
+                    margin:4px;
+                    background:
+                    ${i===currentPage
+                        ? '#16a34a'
+                        : '#2563eb'};
+                ">
+                ${i}
+            </button>
+            `;
+        }
+
+        html += `
+        <button
+            onclick="changePage(${currentPage+1})"
+            ${currentPage===totalPages ? "disabled" : ""}>
+            Next
+        </button>
+        `;
+
+        document.getElementById(
+            "pagination"
+        ).innerHTML = html;
+    }
+
+    function changePage(page){
+
+        const totalPages =
+            Math.ceil(
+                allHistory.length /
+                recordsPerPage
+            );
+
+        if(
+            page < 1 ||
+            page > totalPages
+        ){
+            return;
+        }
+
+        currentPage = page;
+
+        renderHistory();
+    }
+
+    async function returnBook(issueId){
+
+        if(
+            !confirm(
+                "Return this book?"
+            )
+        ){
+            return;
+        }
+
+        try{
+
+            const response =
+                await fetch(
+                    `${API_BASE}/issues/return/${issueId}`,
+                    {
+                        method:"POST",
+                        headers:{
+                            "Authorization":
+                                "Bearer " + token
+                        }
+                    });
+
+            const message =
+                await response.text();
+
+            if(!response.ok){
+
+                if(
+                    message.includes(
+                        "Fine payment required"
+                    )
+                ){
+
+                    alert(
+                        "Fine payment required before returning book."
+                    );
+
+                    location.href =
+                        `fines.html?issueId=${issueId}`;
+
+                    return;
+                }
+
+                throw new Error(
+                    message ||
+                    "Return Failed"
+                );
+            }
+
+            alert(
+                message ||
+                "Book Returned Successfully"
+            );
+
+            loadHistory();
+
+        }catch(error){
+
+            console.error(error);
+
+            alert(
+                error.message ||
+                "Return Failed"
+            );
+        }
+    }
+
+    function goDashboard(){
+
+        if(
+            role === "ROLE_ADMIN"
+        ){
+
+            location.href =
+                "dashboard.html";
+        }
+        else{
+
+            location.href =
+                "librarian-dashboard.html";
+        }
+    }
+
+    loadHistory();
+
+</script>
+
+</body>
+</html>

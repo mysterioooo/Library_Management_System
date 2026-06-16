@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Reservation List</title>
+
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+
+        body{
+            margin:0;
+            background:#f5f7fb;
+            font-family:Arial,sans-serif;
+        }
+
+        nav{
+            background:#2563eb;
+            color:white;
+            padding:15px 25px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+        }
+
+        nav button{
+            background:white;
+            color:#2563eb;
+            border:none;
+            padding:10px 15px;
+            border-radius:8px;
+            cursor:pointer;
+            font-weight:bold;
+        }
+
+        .container{
+            max-width:1200px;
+            margin:30px auto;
+            padding:20px;
+        }
+
+        .card{
+            background:white;
+            padding:20px;
+            border-radius:12px;
+            box-shadow:0 4px 12px rgba(0,0,0,.08);
+        }
+
+        table{
+            width:100%;
+            border-collapse:collapse;
+            margin-top:15px;
+        }
+
+        th,td{
+            border-bottom:1px solid #e5e7eb;
+            padding:12px;
+            text-align:left;
+        }
+
+        th{
+            background:#eff6ff;
+        }
+
+        .empty{
+            text-align:center;
+            color:#666;
+        }
+
+    </style>
+
+</head>
+<body>
+
+<nav>
+
+    <h2>Reservation List</h2>
+
+    <button onclick="goBack()">
+        Dashboard
+    </button>
+
+</nav>
+
+<div class="container">
+
+    <div class="card">
+
+        <h3>Reserved Books</h3>
+
+        <table>
+
+            <thead>
+
+            <tr>
+                <th>ID</th>
+                <th>User ID</th>
+                <th>User Name</th>
+                <th>Book ID</th>
+                <th>Book Title</th>
+                <th>Reservation Date</th>
+            </tr>
+
+            </thead>
+
+            <tbody id="reservationBody">
+
+            <tr>
+                <td colspan="6"
+                    class="empty">
+                    Loading...
+                </td>
+            </tr>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+<script>
+
+    const API_BASE =
+        "http://localhost:8080/api";
+
+    const token =
+        localStorage.getItem("token");
+
+    const role =
+        localStorage.getItem("role");
+
+    // Login Check
+    if(!token){
+
+        location.href =
+            "index.html";
+    }
+
+    // Role Check
+    if(
+        role !== "ROLE_ADMIN" &&
+        role !== "ROLE_LIBRARIAN"
+    ){
+
+        alert("Access Denied");
+
+        goBack();
+
+        throw new Error(
+            "Unauthorized Access"
+        );
+    }
+
+    async function loadReservations(){
+
+        try{
+
+            const response =
+                await fetch(
+                    `${API_BASE}/reservations`,
+                    {
+                        headers:{
+                            "Authorization":
+                                "Bearer " + token
+                        }
+                    });
+
+            if(!response.ok){
+
+                throw new Error(
+                    "Failed to load reservations"
+                );
+            }
+
+            const reservations =
+                await response.json();
+
+            renderReservations(
+                reservations
+            );
+
+        }catch(error){
+
+            console.error(error);
+
+            document.getElementById(
+                "reservationBody"
+            ).innerHTML = `
+            <tr>
+                <td colspan="6"
+                    class="empty">
+                    Unable to load reservations
+                </td>
+            </tr>
+            `;
+        }
+    }
+
+    function renderReservations(
+        reservations
+    ){
+
+        let html = "";
+
+        if(
+            !reservations ||
+            reservations.length === 0
+        ){
+
+            html = `
+            <tr>
+                <td colspan="6"
+                    class="empty">
+                    No Reservations Found
+                </td>
+            </tr>
+            `;
+
+            document.getElementById(
+                "reservationBody"
+            ).innerHTML = html;
+
+            return;
+        }
+
+        reservations.forEach(r => {
+
+            html += `
+            <tr>
+
+                <td>${r.id}</td>
+
+                <td>
+                    ${r.user?.id ?? "-"}
+                </td>
+
+                <td>
+                    ${r.user?.name ?? "-"}
+                </td>
+
+                <td>
+                    ${r.book?.id ?? "-"}
+                </td>
+
+                <td>
+                    ${r.book?.title ?? "-"}
+                </td>
+
+                <td>
+                    ${r.reservationDate ?? "-"}
+                </td>
+
+            </tr>
+            `;
+        });
+
+        document.getElementById(
+            "reservationBody"
+        ).innerHTML = html;
+    }
+
+    function goBack(){
+
+        if(
+            role === "ROLE_ADMIN"
+        ){
+
+            location.href =
+                "dashboard.html";
+        }
+        else if(
+            role === "ROLE_LIBRARIAN"
+        ){
+
+            location.href =
+                "librarian-dashboard.html";
+        }
+        else{
+
+            location.href =
+                "member-dashboard.html";
+        }
+    }
+
+    loadReservations();
+
+</script>
+
+</body>
+</html>

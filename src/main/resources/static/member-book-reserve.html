@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Member Book Reserve</title>
+
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+        body{
+            background:#f5f7fb;
+            margin:0;
+            font-family:Arial,sans-serif;
+        }
+
+        .topbar{
+            background:#2563eb;
+            color:white;
+            padding:15px 25px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+        }
+
+        .container{
+            max-width:1200px;
+            margin:30px auto;
+            padding:20px;
+        }
+
+        .card{
+            background:white;
+            padding:25px;
+            border-radius:12px;
+            box-shadow:0 4px 12px rgba(0,0,0,.08);
+            margin-bottom:20px;
+        }
+
+        h3{
+            margin-bottom:20px;
+        }
+
+        .form-group{
+            margin-bottom:15px;
+        }
+
+        label{
+            display:block;
+            margin-bottom:5px;
+            font-weight:bold;
+        }
+
+        input{
+            width:100%;
+            padding:12px;
+            border:1px solid #ddd;
+            border-radius:8px;
+            font-size:15px;
+            box-sizing:border-box;
+            background:#f9fafb;
+        }
+
+        input:focus{
+            outline:none;
+            border-color:#2563eb;
+            background:white;
+        }
+
+        button{
+            background:#2563eb;
+            color:white;
+            border:none;
+            padding:12px 20px;
+            border-radius:8px;
+            cursor:pointer;
+            font-size:15px;
+        }
+
+        button:hover{
+            background:#1d4ed8;
+        }
+
+        button:disabled{
+            background:#94a3b8;
+            cursor:not-allowed;
+        }
+
+        .secondary{
+            background:#64748b;
+        }
+
+        .secondary:hover{
+            background:#475569;
+        }
+
+        .success{
+            margin-top:15px;
+            color:#16a34a;
+            font-weight:bold;
+        }
+
+        .error{
+            margin-top:15px;
+            color:#dc2626;
+            font-weight:bold;
+        }
+
+        .info-box{
+            margin-top:10px;
+            padding:12px 14px;
+            border-radius:10px;
+            background:#eff6ff;
+            border:1px solid #bfdbfe;
+            color:#1e3a8a;
+            line-height:1.6;
+        }
+
+        .muted{
+            color:#64748b;
+        }
+
+        table{
+            width:100%;
+            border-collapse:collapse;
+            margin-top:15px;
+        }
+
+        th,td{
+            border:1px solid #e5e7eb;
+            padding:12px;
+            text-align:left;
+            vertical-align:top;
+        }
+
+        th{
+            background:#eff6ff;
+        }
+
+        .empty{
+            text-align:center;
+            color:#64748b;
+        }
+
+        .status-waiting{
+            color:#d97706;
+            font-weight:bold;
+        }
+
+        .status-complete{
+            color:#16a34a;
+            font-weight:bold;
+        }
+
+        .row-actions{
+            display:flex;
+            gap:8px;
+            flex-wrap:wrap;
+        }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <h2>Member Book Reserve</h2>
+    <button class="secondary" onclick="goDashboard()">
+        Dashboard
+    </button>
+</div>
+
+<div class="container">
+
+    <div class="card">
+        <h3>Reserve a Book</h3>
+        <p class="muted">
+            You can reserve books only for your own account.
+        </p>
+
+        <div class="form-group">
+            <label>Member ID</label>
+            <input type="number" id="memberId" readonly>
+        </div>
+
+        <div class="form-group">
+            <label>Book ID</label>
+            <input type="number" id="bookId" placeholder="Enter Book ID" onblur="loadBookDetails()">
+        </div>
+
+        <div id="bookInfo"></div>
+
+        <div class="row-actions" style="margin-top:16px;">
+            <button id="reserveBtn" onclick="reserveBook()">
+                Reserve Book
+            </button>
+        </div>
+
+        <div id="message"></div>
+    </div>
+
+    <div class="card">
+        <h3>My Reservations</h3>
+
+        <table>
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Book</th>
+                <th>Reservation Date</th>
+                <th>Status</th>
+            </tr>
+            </thead>
+            <tbody id="reservationBody">
+            <tr>
+                <td colspan="4" class="empty">Loading...</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<script>
+    const API_BASE = "http://localhost:8080/api";
+
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
+    const memberId = localStorage.getItem("userId");
+
+    const memberIdInput = document.getElementById("memberId");
+    const bookIdInput = document.getElementById("bookId");
+    const bookInfoDiv = document.getElementById("bookInfo");
+    const messageDiv = document.getElementById("message");
+    const reserveBtn = document.getElementById("reserveBtn");
+    const reservationBody = document.getElementById("reservationBody");
+
+    let currentBook = null;
+
+    if(!token){
+        location.href = "index.html";
+    }
+
+    if(role !== "ROLE_MEMBER"){
+        alert("Access Denied");
+        location.href = "member-dashboard.html";
+    }
+
+    if(!memberId){
+        alert("Member ID not found. Please login again.");
+        location.href = "index.html";
+    }
+
+    memberIdInput.value = memberId;
+
+    function showSuccess(msg){
+        messageDiv.innerHTML = `<p class="success">${msg}</p>`;
+    }
+
+    function showError(msg){
+        messageDiv.innerHTML = `<p class="error">${msg}</p>`;
+    }
+
+    function clearMessage(){
+        messageDiv.innerHTML = "";
+    }
+
+    function setReserveState(enabled){
+        reserveBtn.disabled = !enabled;
+    }
+
+    async function loadBookDetails(){
+
+        const bookId = bookIdInput.value.trim();
+
+        currentBook = null;
+        clearMessage();
+
+        if(!bookId){
+            bookInfoDiv.innerHTML = "";
+            setReserveState(false);
+            return;
+        }
+
+        try{
+            const response = await fetch(
+                `${API_BASE}/books/${bookId}`,
+                {
+                    headers:{
+                        "Authorization": "Bearer " + token
+                    }
+                }
+            );
+
+            if(!response.ok){
+                bookInfoDiv.innerHTML = `
+                    <div class="info-box">
+                        <span class="error">Book not found</span>
+                    </div>
+                `;
+                setReserveState(false);
+                return;
+            }
+
+            currentBook = await response.json();
+
+            const available = Number(currentBook.availableCopies ?? 0);
+
+            bookInfoDiv.innerHTML = `
+                <div class="info-box">
+                    <div><b>Title:</b> ${currentBook.title ?? "-"}</div>
+                    <div><b>Author:</b> ${currentBook.author ?? "-"}</div>
+                    <div><b>ISBN:</b> ${currentBook.isbn ?? "-"}</div>
+                    <div><b>Category:</b> ${currentBook.categoryName ?? currentBook.category?.name ?? "-"}</div>
+                    <div><b>Available Copies:</b> ${available}</div>
+                    ${
+                        available > 0
+                        ? `<div class="status-complete">This book is available. Reservation is not needed.</div>`
+                        : `<div class="status-waiting">No copies available. You can reserve this book.</div>`
+                    }
+                </div>
+            `;
+
+            setReserveState(available === 0);
+
+        }catch(error){
+            console.error(error);
+            bookInfoDiv.innerHTML = `
+                <div class="info-box">
+                    <span class="error">Unable to load book details</span>
+                </div>
+            `;
+            setReserveState(false);
+        }
+    }
+
+    async function reserveBook(){
+
+        try{
+            clearMessage();
+
+            const bookId = Number(bookIdInput.value);
+            const userId = Number(memberId);
+
+            if(!bookId){
+                showError("Please enter a Book ID");
+                return;
+            }
+
+            if(!currentBook){
+                showError("Please load a valid book first");
+                return;
+            }
+
+            if(Number(currentBook.availableCopies ?? 0) > 0){
+                showError("This book is available. Reservation is not needed.");
+                return;
+            }
+
+            const response = await fetch(
+                `${API_BASE}/reservations`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": "Bearer " + token
+                    },
+                    body: JSON.stringify({
+                        userId: userId,
+                        bookId: bookId
+                    })
+                }
+            );
+
+            const message = await response.text();
+
+            if(!response.ok){
+                throw new Error(message || "Reservation failed");
+            }
+
+            showSuccess(message || "Book reserved successfully");
+
+            bookIdInput.value = "";
+            bookInfoDiv.innerHTML = "";
+            currentBook = null;
+            setReserveState(false);
+
+            loadReservations();
+
+        }catch(error){
+            console.error(error);
+            showError(error.message || "Reservation failed");
+        }
+    }
+
+    async function loadReservations(){
+
+        try{
+            const response = await fetch(
+                `${API_BASE}/reservations/user/${memberId}`,
+                {
+                    headers:{
+                        "Authorization": "Bearer " + token
+                    }
+                }
+            );
+
+            if(!response.ok){
+                reservationBody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="empty">Unable to load reservations</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            const reservations = await response.json();
+
+            renderReservations(reservations);
+
+        }catch(error){
+            console.error(error);
+            reservationBody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="empty">Unable to load reservations</td>
+                </tr>
+            `;
+        }
+    }
+
+    function renderReservations(reservations){
+
+        if(!reservations || reservations.length === 0){
+            reservationBody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="empty">No Reservations Found</td>
+                </tr>
+            `;
+            return;
+        }
+
+        let html = "";
+
+        reservations
+            .sort((a, b) => (b.id ?? 0) - (a.id ?? 0))
+            .forEach(r => {
+
+                const bookTitle = r.book?.title ?? "-";
+                const reservationDate = r.reservationDate ?? "-";
+                const status = (r.book?.availableCopies ?? 0) > 0 ? "AVAILABLE" : "WAITING";
+                const statusClass = (r.book?.availableCopies ?? 0) > 0 ? "status-complete" : "status-waiting";
+
+                html += `
+                    <tr>
+                        <td>${r.id ?? "-"}</td>
+                        <td>${bookTitle}</td>
+                        <td>${reservationDate}</td>
+                        <td class="${statusClass}">${status}</td>
+                    </tr>
+                `;
+            });
+
+        reservationBody.innerHTML = html;
+    }
+
+    function goDashboard(){
+        location.href = "member-dashboard.html";
+    }
+
+    loadReservations();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>My History</title>
+
+    <style>
+
+        body{
+            margin:0;
+            background:#f5f7fb;
+            font-family:Arial,sans-serif;
+        }
+
+        .topbar{
+            background:#2563eb;
+            color:white;
+            padding:15px 25px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+        }
+
+        .container{
+            padding:25px;
+        }
+
+        .card{
+            background:white;
+            padding:20px;
+            border-radius:12px;
+            box-shadow:0 4px 12px rgba(0,0,0,.08);
+        }
+
+        table{
+            width:100%;
+            border-collapse:collapse;
+            margin-top:15px;
+        }
+
+        th,td{
+            border:1px solid #e5e7eb;
+            padding:12px;
+            text-align:left;
+        }
+
+        th{
+            background:#eff6ff;
+        }
+
+        .status-issued{
+            color:#d97706;
+            font-weight:bold;
+        }
+
+        .status-returned{
+            color:#16a34a;
+            font-weight:bold;
+        }
+
+        button{
+            background:#2563eb;
+            color:white;
+            border:none;
+            padding:8px 14px;
+            border-radius:8px;
+            cursor:pointer;
+        }
+
+        button:hover{
+            background:#1d4ed8;
+        }
+
+        .pagination{
+            margin-top:20px;
+            text-align:center;
+        }
+
+        .pagination button{
+            margin:0 5px;
+        }
+
+        .page-info{
+            margin:0 10px;
+            font-weight:bold;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+
+    <h2>My Issue History</h2>
+
+    <button onclick="goBack()">
+        Dashboard
+    </button>
+
+</div>
+
+<div class="container">
+
+    <div class="card">
+
+        <h3>Issued Books</h3>
+
+        <table>
+
+            <thead>
+
+            <tr>
+                <th>Issue ID</th>
+                <th>Book</th>
+                <th>Issue Date</th>
+                <th>Due Date</th>
+                <th>Return Date</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+
+            </thead>
+
+            <tbody id="historyBody">
+
+            <tr>
+                <td colspan="7">
+                    Loading...
+                </td>
+            </tr>
+
+            </tbody>
+
+        </table>
+
+        <div class="pagination">
+
+            <button onclick="previousPage()">
+                Previous
+            </button>
+
+            <span
+                    class="page-info"
+                    id="pageInfo">
+            </span>
+
+            <button onclick="nextPage()">
+                Next
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+    const API_BASE =
+        "http://localhost:8080/api";
+
+    const token =
+        localStorage.getItem("token");
+
+    const role =
+        localStorage.getItem("role");
+
+    const userId =
+        localStorage.getItem("userId");
+
+    if(
+        !token ||
+        role !== "ROLE_MEMBER"
+    ){
+        location.href =
+            "index.html";
+    }
+
+    let historyData = [];
+    let currentPage = 1;
+    const pageSize = 10;
+
+    async function loadHistory(){
+
+        try{
+
+            const response =
+                await fetch(
+                    `${API_BASE}/issues/history/${userId}`,
+                    {
+                        headers:{
+                            "Authorization":
+                                "Bearer " + token
+                        }
+                    });
+
+            if(!response.ok){
+
+                throw new Error(
+                    "Failed to load history"
+                );
+            }
+
+            historyData =
+                await response.json();
+
+            historyData.sort(
+                (a,b)=>
+                    new Date(b.issueDate)
+                    -
+                    new Date(a.issueDate)
+            );
+
+            renderPage();
+
+        }catch(error){
+
+            console.error(error);
+
+            document.getElementById(
+                "historyBody"
+            ).innerHTML = `
+            <tr>
+                <td colspan="7">
+                    Unable To Load History
+                </td>
+            </tr>
+            `;
+        }
+    }
+
+    function renderPage(){
+
+        const tbody =
+            document.getElementById(
+                "historyBody"
+            );
+
+        if(historyData.length === 0){
+
+            tbody.innerHTML = `
+            <tr>
+                <td colspan="7">
+                    No Records Found
+                </td>
+            </tr>
+            `;
+
+            return;
+        }
+
+        const start =
+            (currentPage - 1)
+            * pageSize;
+
+        const end =
+            start + pageSize;
+
+        const pageData =
+            historyData.slice(
+                start,
+                end
+            );
+
+        let html = "";
+
+        pageData.forEach(issue => {
+
+            const status =
+                issue.returnDate
+                ? "RETURNED"
+                : "ISSUED";
+
+            const statusClass =
+                issue.returnDate
+                ? "status-returned"
+                : "status-issued";
+
+            html += `
+            <tr>
+
+                <td>${issue.id}</td>
+
+                <td>
+                    ${issue.book?.title ?? "-"}
+                </td>
+
+                <td>
+                    ${issue.issueDate ?? "-"}
+                </td>
+
+                <td>
+                    ${issue.dueDate ?? "-"}
+                </td>
+
+                <td>
+                    ${issue.returnDate ?? "-"}
+                </td>
+
+                <td class="${statusClass}">
+                    ${status}
+                </td>
+
+                <td>
+
+                    ${
+                        !issue.returnDate
+                        ?
+                        `<button
+                            onclick="returnBook(${issue.id})">
+                            Return
+                        </button>`
+                        :
+                        "Completed"
+                    }
+
+                </td>
+
+            </tr>
+            `;
+        });
+
+        tbody.innerHTML = html;
+
+        const totalPages =
+            Math.ceil(
+                historyData.length
+                / pageSize
+            );
+
+        document.getElementById(
+            "pageInfo"
+        ).innerText =
+            `Page ${currentPage} of ${totalPages}`;
+    }
+
+    function previousPage(){
+
+        if(currentPage > 1){
+
+            currentPage--;
+
+            renderPage();
+        }
+    }
+
+    function nextPage(){
+
+        const totalPages =
+            Math.ceil(
+                historyData.length
+                / pageSize
+            );
+
+        if(currentPage < totalPages){
+
+            currentPage++;
+
+            renderPage();
+        }
+    }
+
+    async function returnBook(issueId){
+
+        if(
+            !confirm(
+                "Return this book?"
+            )
+        ){
+            return;
+        }
+
+        try{
+
+            const response =
+                await fetch(
+                    `${API_BASE}/issues/return/${issueId}`,
+                    {
+                        method:"POST",
+
+                        headers:{
+                            "Authorization":
+                                "Bearer " + token
+                        }
+                    });
+
+            const message =
+                await response.text();
+
+            if(!response.ok){
+
+                if(
+                    message.includes(
+                        "Fine payment required"
+                    )
+                ){
+
+                    location.href =
+                        `member-fines.html?issueId=${issueId}`;
+
+                    return;
+                }
+
+                throw new Error(message);
+            }
+
+            alert(message);
+
+            loadHistory();
+
+        }catch(error){
+
+            alert(
+                error.message ||
+                "Return Failed"
+            );
+        }
+    }
+
+    function goBack(){
+
+        location.href =
+            "member-dashboard.html";
+    }
+
+    loadHistory();
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Return Book</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .topbar{
+            background:#2563eb;
+            color:white;
+            padding:15px 24px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+        }
+
+        .content{
+            max-width:700px;
+            margin:30px auto;
+            padding:20px;
+        }
+
+        .panel{
+            background:white;
+            padding:25px;
+            border-radius:12px;
+            box-shadow:0 4px 12px rgba(0,0,0,.1);
+        }
+
+        input{
+            width:100%;
+            padding:12px;
+            margin-top:15px;
+            border:1px solid #ddd;
+            border-radius:8px;
+        }
+
+        button{
+            padding:12px 20px;
+            border:none;
+            border-radius:8px;
+            cursor:pointer;
+            margin-top:15px;
+            background:#2563eb;
+            color:white;
+        }
+
+        button:hover{
+            background:#1d4ed8;
+        }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <h2>Return Book</h2>
+    <button onclick="goBack()">
+        Back
+    </button>
+</div>
+
+<div class="content">
+    <div class="panel">
+
+        <h3>Return Issued Book</h3>
+
+        <input
+                id="issueId"
+                type="number"
+                placeholder="Enter Issue ID">
+
+        <button onclick="returnBook()">
+            Return Book
+        </button>
+
+    </div>
+</div>
+
+<script>
+
+    const API_BASE =
+        "http://localhost:8080/api";
+
+    const token =
+        localStorage.getItem("token");
+
+    const role =
+        localStorage.getItem("role");
+
+    if(!token){
+
+        location.href =
+            "index.html";
+    }
+
+    if(
+        role !== "ROLE_ADMIN" &&
+        role !== "ROLE_LIBRARIAN"
+    ){
+
+        alert("Access Denied");
+
+        location.href =
+            "member-dashboard.html";
+    }
+
+    async function returnBook(){
+
+        const issueId =
+            document.getElementById(
+                "issueId"
+            ).value;
+
+        if(!issueId){
+
+            alert(
+                "Please enter Issue ID"
+            );
+
+            return;
+        }
+
+        try{
+
+            await performReturn(issueId);
+
+        }catch(error){
+
+            if(
+                error.message.includes(
+                    "Fine payment required"
+                )
+            ){
+
+                const pay =
+                    confirm(
+                        "This book has an unpaid fine.\n\nPay fine now?"
+                    );
+
+                if(!pay){
+                    return;
+                }
+
+                await payFine(issueId);
+
+                await performReturn(issueId);
+
+                alert(
+                    "Fine paid and book returned successfully"
+                );
+
+                document.getElementById(
+                    "issueId"
+                ).value = "";
+
+                return;
+            }
+
+            alert(
+                error.message ||
+                "Return failed"
+            );
+        }
+    }
+
+    async function performReturn(issueId){
+
+        const response =
+            await fetch(
+                `${API_BASE}/issues/return/${issueId}`,
+                {
+                    method:"POST",
+
+                    headers:{
+                        "Authorization":
+                            "Bearer " + token
+                    }
+                });
+
+        const message =
+            await response.text();
+
+        if(!response.ok){
+
+            throw new Error(
+                message ||
+                "Return failed"
+            );
+        }
+
+        alert(
+            message ||
+            "Book Returned Successfully"
+        );
+
+        document.getElementById(
+            "issueId"
+        ).value = "";
+    }
+
+    async function payFine(issueId){
+
+        const response =
+            await fetch(
+                `${API_BASE}/fines/pay-by-issue/${issueId}`,
+                {
+                    method:"POST",
+
+                    headers:{
+                        "Authorization":
+                            "Bearer " + token
+                    }
+                });
+
+        const message =
+            await response.text();
+
+        if(!response.ok){
+
+            throw new Error(
+                message ||
+                "Fine payment failed"
+            );
+        }
+
+        alert(message);
+    }
+
+    function goBack(){
+
+        if(role === "ROLE_ADMIN"){
+
+            location.href =
+                "dashboard.html";
+
+        }else{
+
+            location.href =
+                "librarian-dashboard.html";
+        }
+    }
+
+</script>
+
+</body>
+</html>

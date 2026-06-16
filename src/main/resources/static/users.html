@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Users</title>
+
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+        body{
+            margin:0;
+            background:#f5f7fb;
+            font-family:Arial,sans-serif;
+        }
+
+        .topbar{
+            background:#2563eb;
+            color:white;
+            padding:15px 24px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+        }
+
+        .content{
+            padding:25px;
+        }
+
+        .panel{
+            background:white;
+            padding:20px;
+            border-radius:12px;
+            box-shadow:0 4px 12px rgba(0,0,0,.1);
+        }
+
+        table{
+            width:100%;
+            border-collapse:collapse;
+            margin-top:15px;
+        }
+
+        th,td{
+            border:1px solid #ddd;
+            padding:12px;
+            text-align:left;
+        }
+
+        th{
+            background:#eff6ff;
+        }
+
+        button{
+            padding:8px 14px;
+            border:none;
+            border-radius:6px;
+            cursor:pointer;
+        }
+
+        .view-btn{
+            background:#2563eb;
+            color:white;
+            margin-right:5px;
+        }
+
+        .view-btn:hover{
+            background:#1d4ed8;
+        }
+
+        .edit-btn{
+            background:#f59e0b;
+            color:white;
+            margin-right:5px;
+        }
+
+        .edit-btn:hover{
+            background:#d97706;
+        }
+
+        .delete-btn{
+            background:#dc2626;
+            color:white;
+        }
+
+        .delete-btn:hover{
+            background:#b91c1c;
+        }
+
+        .empty{
+            text-align:center;
+            color:#64748b;
+        }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <h2>User Management</h2>
+    <button onclick="goBack()">Back</button>
+</div>
+
+<div class="content">
+    <div class="panel">
+        <h3>All Users</h3>
+
+        <table>
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Action</th>
+            </tr>
+            </thead>
+
+            <tbody id="userBody">
+            <tr>
+                <td colspan="5" class="empty">Loading...</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const API_BASE = "http://localhost:8080/api";
+    const token = localStorage.getItem("token");
+    const userRole = localStorage.getItem("role");
+
+    if (!token) {
+        location.href = "index.html";
+    }
+
+    if (userRole !== "ROLE_ADMIN") {
+        alert("Access Denied");
+        location.href = "dashboard.html";
+    }
+
+    loadUsers();
+
+    async function loadUsers() {
+        try {
+            const response = await fetch(`${API_BASE}/users`, {
+                headers: {
+                    "Authorization": "Bearer " + token
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.text();
+                throw new Error(error || "Failed to load users");
+            }
+
+            const users = await response.json();
+
+            let html = "";
+
+            if (!users || users.length === 0) {
+                html = `
+                <tr>
+                    <td colspan="5" class="empty">No Users Found</td>
+                </tr>
+                `;
+            } else {
+                users.forEach(user => {
+                    html += `
+                    <tr>
+                        <td>${user.id}</td>
+                        <td>${user.name ?? "-"}</td>
+                        <td>${user.email ?? "-"}</td>
+                        <td>${user.role ?? "-"}</td>
+                        <td>
+                            <button class="view-btn" onclick="viewUser(${user.id})">
+                                View
+                            </button>
+                            <button class="edit-btn" onclick="editUser(${user.id})">
+                                Update
+                            </button>
+                            <button class="delete-btn" onclick="deleteUser(${user.id})">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                    `;
+                });
+            }
+
+            document.getElementById("userBody").innerHTML = html;
+
+        } catch (error) {
+            console.error(error);
+            document.getElementById("userBody").innerHTML = `
+            <tr>
+                <td colspan="5" class="empty">Failed To Load Users</td>
+            </tr>
+            `;
+            alert("Error loading users");
+        }
+    }
+
+    async function deleteUser(id) {
+        if (!confirm("Delete this user?")) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/users/${id}`, {
+                method: "DELETE",
+                headers: {
+                    "Authorization": "Bearer " + token
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.text();
+                throw new Error(error || "Delete failed");
+            }
+
+            alert("User deleted successfully");
+            loadUsers();
+
+        } catch (error) {
+            console.error(error);
+            alert(error.message || "Error deleting user");
+        }
+    }
+
+    function viewUser(id) {
+        location.href = `user-details.html?id=${id}`;
+    }
+
+    function editUser(id) {
+        location.href = `edit-user.html?id=${id}`;
+    }
+
+    function goBack() {
+        location.href = "dashboard.html";
+    }
+</script>
+
+</body>
+</html>

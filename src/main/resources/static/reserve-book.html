@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reserve Book</title>
+
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+
+        body{
+            background:#f5f7fb;
+            margin:0;
+            font-family:Arial,sans-serif;
+        }
+
+        .topbar{
+            background:#2563eb;
+            color:white;
+            padding:15px 25px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+        }
+
+        .container{
+            max-width:1200px;
+            margin:30px auto;
+            padding:20px;
+        }
+
+        .card{
+            background:white;
+            padding:25px;
+            border-radius:12px;
+            box-shadow:0 4px 12px rgba(0,0,0,.08);
+            margin-bottom:20px;
+        }
+
+        h3{
+            margin-bottom:20px;
+        }
+
+        .form-group{
+            margin-bottom:15px;
+        }
+
+        label{
+            display:block;
+            margin-bottom:5px;
+            font-weight:bold;
+        }
+
+        input{
+            width:100%;
+            padding:12px;
+            border:1px solid #ddd;
+            border-radius:8px;
+            font-size:15px;
+            box-sizing:border-box;
+        }
+
+        button{
+            background:#2563eb;
+            color:white;
+            border:none;
+            padding:12px 20px;
+            border-radius:8px;
+            cursor:pointer;
+            font-size:15px;
+        }
+
+        button:hover{
+            background:#1d4ed8;
+        }
+
+        .secondary{
+            background:#64748b;
+        }
+
+        .secondary:hover{
+            background:#475569;
+        }
+
+        .success{
+            margin-top:15px;
+            color:#16a34a;
+            font-weight:bold;
+        }
+
+        .error{
+            margin-top:15px;
+            color:#dc2626;
+            font-weight:bold;
+        }
+
+        table{
+            width:100%;
+            border-collapse:collapse;
+            margin-top:15px;
+        }
+
+        th,td{
+            border:1px solid #e5e7eb;
+            padding:12px;
+            text-align:left;
+            vertical-align:top;
+        }
+
+        th{
+            background:#eff6ff;
+        }
+
+        .muted{
+            color:#64748b;
+        }
+
+        .issue-btn{
+            background:#16a34a;
+        }
+
+        .issue-btn:hover{
+            background:#15803d;
+        }
+
+        .empty{
+            text-align:center;
+            color:#64748b;
+        }
+
+        .row-actions{
+            display:flex;
+            gap:8px;
+            flex-wrap:wrap;
+        }
+
+    </style>
+
+</head>
+<body>
+
+<div class="topbar">
+
+    <h2>Reserve Book</h2>
+
+    <button onclick="goDashboard()">
+        Dashboard
+    </button>
+
+</div>
+
+<div class="container">
+
+    <div class="card">
+
+        <h3>Create Reservation</h3>
+
+        <div class="form-group">
+            <label>User ID</label>
+            <input type="number" id="userId" placeholder="Enter User ID" onblur="loadUserDetails()">
+        </div>
+
+        <div id="userInfo"
+             style="margin-top:10px;color:#2563eb;">
+        </div>
+
+
+        <div class="form-group">
+            <label>Book ID</label>
+            <input type="number" id="bookId" placeholder="Enter Book ID" onblur="loadBookDetails()">
+        </div>
+
+
+        <div id="bookInfo"
+             style="margin-top:10px;color:#16a34a;">
+        </div>
+        <button onclick="processBook()">
+            Issue / Reserve Book
+        </button>
+
+        <div id="message"></div>
+
+    </div>
+
+    <div class="card">
+
+        <h3>Reservation List</h3>
+
+        <div class="muted">
+            Issue button appears when the reserved book has available copies.
+        </div>
+
+        <table>
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>User</th>
+                <th>Book</th>
+                <th>Available Copies</th>
+                <th>Reservation Date</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+            </thead>
+
+            <tbody id="reservationBody">
+            <tr>
+                <td colspan="7" class="empty">Loading...</td>
+            </tr>
+            </tbody>
+        </table>
+
+    </div>
+
+</div>
+
+<script>
+
+    const API_BASE = "http://localhost:8080/api";
+
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
+
+    let currentUser = null;
+    let currentBook = null;
+
+    if(!token){
+        location.href = "index.html";
+    }
+
+    async function loadUserDetails(){
+
+        const userId =
+            document.getElementById("userId").value;
+
+        if(!userId){
+            document.getElementById("userInfo").innerHTML = "";
+            return;
+        }
+
+        try{
+
+            const response =
+                await fetch(
+                    `${API_BASE}/users/${userId}`,
+                    {
+                        headers:{
+                            "Authorization":
+                                "Bearer " + token
+                        }
+                    });
+
+            if(!response.ok){
+                throw new Error();
+            }
+
+            currentUser =
+                await response.json();
+
+            document.getElementById(
+                "userInfo"
+            ).innerHTML = `
+                <b>Name:</b> ${currentUser.name}<br>
+                <b>Email:</b> ${currentUser.email}<br>
+                <b>Role:</b> ${currentUser.role}
+            `;
+
+        }catch{
+
+            currentUser = null;
+
+            document.getElementById(
+                "userInfo"
+            ).innerHTML =
+                `<span style="color:red">
+                    User not found
+                </span>`;
+        }
+    }
+
+    async function loadBookDetails(){
+
+        const bookId =
+            document.getElementById("bookId").value;
+
+        if(!bookId){
+            document.getElementById("bookInfo").innerHTML = "";
+            return;
+        }
+
+        try{
+
+            const response =
+                await fetch(
+                    `${API_BASE}/books/${bookId}`,
+                    {
+                        headers:{
+                            "Authorization":
+                                "Bearer " + token
+                        }
+                    });
+
+            if(!response.ok){
+                throw new Error();
+            }
+
+            currentBook =
+                await response.json();
+
+            document.getElementById(
+                "bookInfo"
+            ).innerHTML = `
+                <b>Title:</b> ${currentBook.title}<br>
+                <b>Author:</b> ${currentBook.author}<br>
+                <b>ISBN:</b> ${currentBook.isbn}<br>
+                <b>Available Copies:</b>
+                ${currentBook.availableCopies}
+            `;
+
+        }catch{
+
+            currentBook = null;
+
+            document.getElementById(
+                "bookInfo"
+            ).innerHTML =
+                `<span style="color:red">
+                    Book not found
+                </span>`;
+        }
+    }
+
+    async function processBook(){
+
+        try{
+
+            const userId =
+                Number(
+                    document.getElementById(
+                        "userId"
+                    ).value
+                );
+
+            const bookId =
+                Number(
+                    document.getElementById(
+                        "bookId"
+                    ).value
+                );
+
+            if(!userId || !bookId){
+
+                showError(
+                    "Please enter User ID and Book ID"
+                );
+
+                return;
+            }
+
+            if(!currentUser){
+
+                showError(
+                    "Invalid User"
+                );
+
+                return;
+            }
+
+            if(!currentBook){
+
+                showError(
+                    "Invalid Book"
+                );
+
+                return;
+            }
+
+            if(currentBook.availableCopies > 0){
+
+                const response =
+                    await fetch(
+                        `${API_BASE}/issues`,
+                        {
+                            method:"POST",
+
+                            headers:{
+                                "Content-Type":
+                                    "application/json",
+
+                                "Authorization":
+                                    "Bearer " + token
+                            },
+
+                            body:JSON.stringify({
+                                userId:userId,
+                                bookId:bookId
+                            })
+                        });
+
+                const message =
+                    await response.text();
+
+                if(!response.ok){
+
+                    throw new Error(
+                        message
+                    );
+                }
+
+                showSuccess(
+                    "Book issued successfully"
+                );
+
+                setTimeout(() => {
+
+                    if(role === "ROLE_ADMIN"){
+
+                        location.href =
+                            "dashboard.html";
+
+                    }else{
+
+                        location.href =
+                            "librarian-dashboard.html";
+                    }
+
+                },1500);
+
+            }else{
+
+                const response =
+                    await fetch(
+                        `${API_BASE}/reservations`,
+                        {
+                            method:"POST",
+
+                            headers:{
+                                "Content-Type":
+                                    "application/json",
+
+                                "Authorization":
+                                    "Bearer " + token
+                            },
+
+                            body:JSON.stringify({
+                                userId:userId,
+                                bookId:bookId
+                            })
+                        });
+
+                const message =
+                    await response.text();
+
+                if(!response.ok){
+
+                    throw new Error(
+                        message
+                    );
+                }
+
+                showSuccess(
+                    "No copies available. Reservation created."
+                );
+
+                loadReservations();
+            }
+
+        }catch(error){
+
+            console.error(error);
+
+            showError(
+                error.message ||
+                "Operation failed"
+            );
+        }
+    }
+
+    async function loadReservations(){
+
+        try{
+
+            const response =
+                await fetch(
+                    `${API_BASE}/reservations`,
+                    {
+                        headers:{
+                            "Authorization":
+                                "Bearer " + token
+                        }
+                    });
+
+            if(!response.ok){
+                return;
+            }
+
+            const reservations =
+                await response.json();
+
+            renderReservations(
+                reservations
+            );
+
+        }catch(error){
+
+            console.error(error);
+        }
+    }
+
+    function renderReservations(reservations){
+
+        const tbody =
+            document.getElementById(
+                "reservationBody"
+            );
+
+        if(!tbody){
+            return;
+        }
+
+        let html = "";
+
+        if(!reservations ||
+           reservations.length === 0){
+
+            html = `
+            <tr>
+                <td colspan="7">
+                    No Reservations Found
+                </td>
+            </tr>
+            `;
+
+            tbody.innerHTML = html;
+            return;
+        }
+
+        reservations.forEach(r => {
+
+            html += `
+            <tr>
+
+                <td>${r.id}</td>
+
+                <td>
+                    ${r.user?.name ?? "-"}
+                </td>
+
+                <td>
+                    ${r.book?.title ?? "-"}
+                </td>
+
+                <td>
+                    ${r.book?.availableCopies ?? 0}
+                </td>
+
+                <td>
+                    ${r.reservationDate ?? "-"}
+                </td>
+
+                <td>
+                    ${
+                        (r.book?.availableCopies ?? 0) > 0
+                        ? "AVAILABLE"
+                        : "WAITING"
+                    }
+                </td>
+
+                <td>
+                    ${
+                        (r.book?.availableCopies ?? 0) > 0
+                        ?
+                        `
+                        <button
+                            onclick="issueReservedBook(
+                                ${r.id},
+                                ${r.user.id},
+                                ${r.book.id}
+                            )">
+                            Issue
+                        </button>
+                        `
+                        :
+                        "Waiting"
+                    }
+                </td>
+
+            </tr>
+            `;
+        });
+
+        tbody.innerHTML = html;
+    }
+
+    async function issueReservedBook(
+        reservationId,
+        userId,
+        bookId){
+
+        try{
+
+            await fetch(
+                `${API_BASE}/issues`,
+                {
+                    method:"POST",
+
+                    headers:{
+                        "Content-Type":
+                            "application/json",
+
+                        "Authorization":
+                            "Bearer " + token
+                    },
+
+                    body:JSON.stringify({
+                        userId:userId,
+                        bookId:bookId
+                    })
+                });
+
+            await fetch(
+                `${API_BASE}/reservations/${reservationId}`,
+                {
+                    method:"DELETE",
+
+                    headers:{
+                        "Authorization":
+                            "Bearer " + token
+                    }
+                });
+
+            showSuccess(
+                "Book issued successfully"
+            );
+
+            loadReservations();
+
+        }catch(error){
+
+            showError(
+                error.message
+            );
+        }
+    }
+
+    function showSuccess(msg){
+
+        document.getElementById(
+            "message"
+        ).innerHTML =
+            `<p class="success">${msg}</p>`;
+    }
+
+    function showError(msg){
+
+        document.getElementById(
+            "message"
+        ).innerHTML =
+            `<p class="error">${msg}</p>`;
+    }
+
+    function goDashboard(){
+
+        if(role === "ROLE_ADMIN"){
+
+            location.href =
+                "dashboard.html";
+
+        }else if(
+            role === "ROLE_LIBRARIAN"
+        ){
+
+            location.href =
+                "librarian-dashboard.html";
+
+        }else{
+
+            location.href =
+                "member-dashboard.html";
+        }
+    }
+
+    loadReservations();
+
+</script>
+
+</body>
+</html>

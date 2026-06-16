@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Librarian Dashboard</title>
+
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+
+        *{
+            margin:0;
+            padding:0;
+            box-sizing:border-box;
+            font-family:'Segoe UI',sans-serif;
+        }
+
+        body{
+            background:#f8fafc;
+            color:#1e293b;
+        }
+
+        nav{
+            background:white;
+            padding:18px 30px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            border-bottom:1px solid #e2e8f0;
+            box-shadow:0 2px 10px rgba(0,0,0,.05);
+        }
+
+        nav h2{
+            font-size:30px;
+            font-weight:700;
+        }
+
+        nav button{
+            background:#2563eb;
+            color:white;
+            border:none;
+            padding:10px 18px;
+            border-radius:10px;
+            cursor:pointer;
+            font-weight:600;
+        }
+
+        nav button:hover{
+            background:#1d4ed8;
+        }
+
+        .content{
+            max-width:1600px;
+            margin:auto;
+            padding:25px;
+        }
+
+        .menu{
+            display:flex;
+            flex-wrap:wrap;
+            gap:12px;
+            margin-bottom:25px;
+        }
+
+        .menu button{
+            background:white;
+            color:#334155;
+            border:1px solid #e2e8f0;
+            padding:12px 18px;
+            border-radius:10px;
+            cursor:pointer;
+            font-weight:600;
+            box-shadow:0 2px 8px rgba(0,0,0,.04);
+            transition:.3s;
+        }
+
+        .menu button:hover{
+            background:#2563eb;
+            color:white;
+        }
+
+        .cards{
+            display:grid;
+            grid-template-columns:repeat(3,1fr);
+            gap:20px;
+            margin-bottom:25px;
+        }
+
+        .card{
+            background:white;
+            padding:25px;
+            border-radius:16px;
+            border:1px solid #e2e8f0;
+            box-shadow:0 4px 12px rgba(15,23,42,.05);
+            position:relative;
+        }
+
+        .card::before{
+            content:"";
+            position:absolute;
+            top:0;
+            left:0;
+            width:100%;
+            height:4px;
+            background:#2563eb;
+        }
+
+        .card h3{
+            color:#64748b;
+            margin-bottom:12px;
+        }
+
+        .card h1{
+            color:#2563eb;
+            font-size:42px;
+            margin:0;
+        }
+
+        .panel{
+            background:white;
+            padding:25px;
+            border-radius:16px;
+            border:1px solid #e2e8f0;
+            box-shadow:0 4px 12px rgba(15,23,42,.05);
+        }
+
+        .panel h3{
+            margin-bottom:18px;
+        }
+
+        table{
+            width:100%;
+            border-collapse:collapse;
+        }
+
+        th{
+            background:#f8fafc;
+            color:#475569;
+            padding:14px;
+            text-align:left;
+            border-bottom:2px solid #e2e8f0;
+        }
+
+        td{
+            padding:14px;
+            border-bottom:1px solid #e2e8f0;
+        }
+
+        tr:hover{
+            background:#f8fafc;
+        }
+
+        .available{
+            color:#16a34a;
+            font-weight:600;
+        }
+
+        .unavailable{
+            color:#dc2626;
+            font-weight:600;
+        }
+
+        @media(max-width:900px){
+
+            .cards{
+                grid-template-columns:1fr;
+            }
+
+            .menu{
+                flex-direction:column;
+            }
+
+            .menu button{
+                width:100%;
+            }
+        }
+
+    </style>
+
+</head>
+<body>
+
+<nav>
+
+    <h2>Librarian Dashboard</h2>
+
+    <button onclick="logout()">
+        Logout
+    </button>
+
+</nav>
+
+<div class="content">
+
+    <div class="menu">
+
+        <button onclick="location.href='books.html'">
+            Books
+        </button>
+
+        <button onclick="location.href='issue-book.html'">
+            Issue Book
+        </button>
+
+
+        <button onclick="location.href='issue-history.html'">
+            Issue History
+        </button>
+
+        <button onclick="location.href='reserve-book.html'">
+            Reservations
+        </button>
+
+        <button onclick="location.href='categories.html'">
+            Categories
+        </button>
+
+        <button onclick="location.href='fines.html'">
+            Fines
+        </button>
+
+    </div>
+
+    <div class="cards">
+
+        <div class="card">
+            <h3>Total Books</h3>
+            <h1 id="totalBooks">0</h1>
+        </div>
+
+        <div class="card">
+            <h3>Issued Books</h3>
+            <h1 id="totalIssuedBooks">0</h1>
+        </div>
+
+        <div class="card">
+            <h3>Total Fines</h3>
+            <h1 id="totalFines">0</h1>
+        </div>
+
+    </div>
+
+    <div class="panel">
+
+        <h3>Recent Books</h3>
+
+        <table>
+
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Cover</th>
+                <th>Title</th>
+                <th>Author</th>
+                <th>Category</th>
+                <th>Available</th>
+            </tr>
+            </thead>
+
+            <tbody id="bookBody"></tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+<script>
+    const role =
+    localStorage.getItem("role");
+
+if(
+    role !== "ROLE_ADMIN" &&
+    role !== "ROLE_LIBRARIAN"
+){
+    alert("Access Denied");
+
+    location.href =
+        "index.html";
+}
+
+    const API_BASE =
+    "http://localhost:8080/api";
+
+        const token =
+            localStorage.getItem("token");
+
+async function loadDashboard(){
+
+    try{
+
+        const response =
+            await fetch(
+                `${API_BASE}/users/dashboard`,
+                {
+                    headers:{
+                        "Authorization":
+                            "Bearer " + token
+                    }
+                });
+
+        if(!response.ok){
+            throw new Error("Dashboard load failed");
+        }
+
+        const data =
+            await response.json();
+
+        document.getElementById(
+            "totalBooks"
+        ).innerText =
+            data.totalBooks ?? 0;
+
+        document.getElementById(
+            "totalIssuedBooks"
+        ).innerText =
+            data.totalIssuedBooks ?? 0;
+
+        document.getElementById(
+            "totalFines"
+        ).innerText =
+            data.totalFines ?? 0;
+
+    }catch(error){
+
+        console.error(error);
+    }
+}
+    async function loadBooks(){
+
+    try{
+
+        const response =
+            await fetch(
+                `${API_BASE}/books?page=0&size=10`,
+                {
+                    headers:{
+                        "Authorization":
+                            "Bearer " + token
+                    }
+                });
+
+        if(!response.ok){
+            throw new Error("Books load failed");
+        }
+
+        const data =
+            await response.json();
+
+        let html = "";
+
+        data.content.forEach(book => {
+
+            const imageHtml =
+                book.imageName
+                ? `
+                    <img
+                        src="http://localhost:8080/uploads/books/${book.imageName}"
+                        width="60"
+                        height="80"
+                        style="
+                            object-fit:cover;
+                            border-radius:8px;
+                            border:1px solid #ddd;
+                        ">
+                  `
+                : `
+                    <div
+                        style="
+                            width:60px;
+                            height:80px;
+                            background:#f1f5f9;
+                            border:1px solid #ddd;
+                            border-radius:8px;
+                            display:flex;
+                            align-items:center;
+                            justify-content:center;
+                            font-size:12px;
+                            color:#64748b;
+                        ">
+                        No Image
+                    </div>
+                  `;
+
+            html += `
+            <tr>
+
+                <td>${book.id}</td>
+
+                <td>${imageHtml}</td>
+
+                <td>${book.title}</td>
+
+                <td>${book.author}</td>
+
+                <td>${book.categoryName ?? "-"}</td>
+
+                <td class="${
+                    book.availableCopies > 0
+                    ? 'available'
+                    : 'unavailable'
+                }">
+                    ${book.availableCopies}
+                </td>
+
+            </tr>`;
+        });
+
+        document.getElementById(
+            "bookBody"
+        ).innerHTML = html;
+
+    }catch(error){
+
+        console.error(error);
+    }
+}
+
+
+    function logout(){
+
+        localStorage.clear();
+
+        location.href =
+            "index.html";
+    }
+
+    loadDashboard();
+    loadBooks();
+
+</script>
+
+</body>
+</html>

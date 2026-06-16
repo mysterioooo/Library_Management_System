@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Books Management</title>
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+
+        body{
+            background:#f5f7fb;
+            margin:0;
+            font-family:Arial,sans-serif;
+        }
+
+        .topbar{
+            background:#2563eb;
+            color:white;
+            padding:15px 25px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+        }
+
+        .container{
+            padding:25px;
+        }
+
+        .card{
+            background:white;
+            padding:20px;
+            border-radius:12px;
+            box-shadow:0 4px 12px rgba(0,0,0,.08);
+            margin-bottom:20px;
+        }
+
+        .row{
+            display:flex;
+            gap:10px;
+            flex-wrap:wrap;
+        }
+
+        input,select{
+            padding:10px;
+            border:1px solid #ddd;
+            border-radius:8px;
+            min-width:200px;
+        }
+
+        button{
+            background:#2563eb;
+            color:white;
+            border:none;
+            padding:10px 16px;
+            border-radius:8px;
+            cursor:pointer;
+        }
+
+        button:hover{
+            background:#1d4ed8;
+        }
+
+        .delete-btn{
+            background:#dc2626;
+        }
+
+        .delete-btn:hover{
+            background:#b91c1c;
+        }
+
+        table{
+            width:100%;
+            border-collapse:collapse;
+            margin-top:15px;
+        }
+
+        th,td{
+            border:1px solid #e5e7eb;
+            padding:12px;
+            text-align:left;
+        }
+
+        th{
+            background:#eff6ff;
+        }
+
+        .pagination{
+            margin-top:15px;
+            display:flex;
+            gap:10px;
+            align-items:center;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+
+    <h2>Books Management</h2>
+
+    <button onclick="goBack()">
+        Back
+    </button>
+
+</div>
+
+<div class="container">
+
+    <!-- Search -->
+
+    <div class="card">
+
+        <h3>Search Books</h3>
+
+        <div class="row">
+
+            <input
+                    id="searchKeyword"
+                    placeholder="Title / Author">
+
+            <button onclick="searchBooks()">
+                Search
+            </button>
+
+            <button onclick="loadBooks()">
+                Refresh
+            </button>
+
+        </div>
+
+    </div>
+
+    <!-- Books -->
+
+    <div class="card">
+
+        <h3>All Books</h3>
+
+
+        <table>
+
+            <thead>
+
+            <tr>
+                <th>ID</th>
+                <th>ISBN</th>
+                <th>Cover</th>
+                <th>Title</th>
+                <th>Author</th>
+                <th>Publisher</th>
+                <th>Category</th>
+                <th>Total</th>
+                <th>Available</th>
+                <th>Action</th>
+            </tr>
+
+            </thead>
+
+            <tbody id="bookBody"></tbody>
+
+        </table>
+
+        <div class="pagination">
+
+            <button onclick="previousPage()">
+                Previous
+            </button>
+
+            <span id="pageInfo">
+                Page 1
+            </span>
+
+            <button onclick="nextPage()">
+                Next
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+    const API_BASE =
+        "http://localhost:8080/api";
+
+        const token =
+            localStorage.getItem("token");
+
+        const role =
+            localStorage.getItem("role");
+
+        if(!token){
+
+            location.href =
+                "index.html";
+        }
+
+    let currentPage = 0;
+
+    const pageSize = 5;
+
+
+
+    async function loadBooks(page = currentPage){
+
+        try{
+
+            currentPage = page;
+            const response =
+            await fetch(
+                `${API_BASE}/books?page=${page}&size=${pageSize}`,
+                {
+                    headers:{
+                        "Authorization":
+                            "Bearer " + token
+                    }
+                }
+            );
+
+            const data =
+                await response.json();
+
+            renderBooks(
+                data.content
+            );
+
+            document.getElementById(
+                "pageInfo"
+            ).innerText =
+                `Page ${data.number + 1} of ${data.totalPages}`;
+
+        }catch(error){
+
+            console.error(error);
+
+            alert(
+                "Unable to load books"
+            );
+        }
+    }
+
+    async function searchBooks(){
+
+        try{
+
+            const keyword =
+                document.getElementById(
+                    "searchKeyword"
+                ).value;
+
+            const response =
+            await fetch(
+                `${API_BASE}/books/search?keyword=${keyword}`,
+                {
+                    headers:{
+                        "Authorization":
+                            "Bearer " + token
+                    }
+                }
+            );
+
+            const books =
+                await response.json();
+
+            renderBooks(books);
+
+            document.getElementById(
+                "pageInfo"
+            ).innerText =
+                `${books.length} Results`;
+
+        }catch(error){
+
+            console.error(error);
+
+            alert(
+                "Search failed"
+            );
+        }
+    }
+
+    function renderBooks(books){
+    console.log("Rendering books");
+
+    let html = "";
+
+    books.forEach(book => {
+
+        const imageUrl =
+            book.imageName
+                ? `http://localhost:8080/uploads/books/${book.imageName}`
+                : "images/no-book.png";
+
+        html += `
+        <tr>
+
+            <td>${book.id}</td>
+
+            <td>${book.isbn}</td>
+
+            <td>
+                <img
+                    src="${imageUrl}"
+                    alt="Book Cover"
+                    width="60"
+                    height="80"
+                    style="
+                        object-fit:cover;
+                        border-radius:8px;
+                        border:1px solid #ddd;
+                    "
+                    onerror="this.src='images/no-book.png'">
+            </td>
+
+            <td>${book.title}</td>
+
+            <td>${book.author}</td>
+
+            <td>${book.publisher ?? '-'}</td>
+
+            <td>${book.categoryName ?? '-'}</td>
+
+            <td>${book.totalCopies}</td>
+
+            <td>${book.availableCopies}</td>
+
+            <td>
+
+                <button
+                    onclick="viewBook(${book.id})">
+                    View
+                </button>
+
+                ${
+                    role !== "ROLE_MEMBER"
+                    ?
+                    `
+                    <button
+                        onclick="editBook(${book.id})">
+                        Edit
+                    </button>
+
+                    <button
+                        class="delete-btn"
+                        onclick="deleteBook(${book.id})">
+                        Delete
+                    </button>
+                    `
+                    : ""
+                }
+
+            </td>
+
+        </tr>
+        `;
+    });
+
+    document.getElementById(
+        "bookBody"
+    ).innerHTML = html;
+}
+
+
+    async function deleteBook(id){
+
+    if(role === "ROLE_MEMBER"){
+
+        alert("Access Denied");
+        return;
+    }
+
+    if(!confirm("Delete this book?")){
+        return;
+    }
+
+    try{
+
+            const response =
+                        await fetch(
+            `${API_BASE}/books/${id}`,
+            {
+                method:"DELETE",
+                headers:{
+                    "Authorization":
+                        "Bearer " + token
+                }
+            });
+
+            if(!response.ok){
+
+                throw new Error();
+            }
+
+            alert(
+                "Book deleted successfully"
+            );
+
+            loadBooks();
+
+        }catch(error){
+
+            console.error(error);
+
+            alert(
+                "Delete failed"
+            );
+        }
+    }
+
+   function editBook(id){
+
+    if(role === "ROLE_MEMBER"){
+
+        alert("Access Denied");
+        return;
+    }
+
+    location.href =
+        `edit-book.html?id=${id}`;
+}
+
+    function nextPage(){
+
+        currentPage++;
+
+        loadBooks(currentPage);
+    }
+
+    function previousPage(){
+
+        if(currentPage > 0){
+
+            currentPage--;
+
+            loadBooks(currentPage);
+        }
+    }
+
+   function goBack(){
+
+    if(
+        role === "ROLE_ADMIN"
+    ){
+
+        location.href =
+            "dashboard.html";
+    }
+    else if(
+        role === "ROLE_LIBRARIAN"
+    ){
+
+        location.href =
+            "librarian-dashboard.html";
+    }
+    else{
+
+        location.href =
+            "member-dashboard.html";
+    }
+}
+    loadBooks();
+
+    function viewBook(id){
+
+    location.href =
+        `book-details.html?id=${id}`;
+}
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Issue Book</title>
+
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+        .topbar{
+            background:#2563eb;
+            color:#fff;
+            padding:15px 24px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+        }
+
+        .content{
+            padding:24px;
+            max-width:900px;
+            margin:0 auto;
+        }
+
+        .panel{
+            background:#fff;
+            padding:20px;
+            border-radius:12px;
+            box-shadow:0 4px 14px rgba(0,0,0,.08);
+            margin-bottom:20px;
+        }
+
+        .form-grid{
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:12px;
+            margin-top:16px;
+        }
+
+        input{
+            width:100%;
+            padding:12px;
+            border:1px solid #d1d5db;
+            border-radius:8px;
+            box-sizing:border-box;
+        }
+
+        input:focus{
+            border-color:#2563eb;
+            outline:none;
+        }
+
+        button{
+            padding:12px 18px;
+            border:none;
+            border-radius:8px;
+            cursor:pointer;
+            font-weight:600;
+            color:white;
+        }
+
+        .btn-primary{
+            background:#2563eb;
+        }
+
+        .btn-primary:hover{
+            background:#1d4ed8;
+        }
+
+        .btn-gray{
+            background:#64748b;
+        }
+
+        .btn-gray:hover{
+            background:#475569;
+        }
+
+        .button-row{
+            display:flex;
+            gap:10px;
+            margin-top:16px;
+            flex-wrap:wrap;
+        }
+
+        .info-box{
+            margin-top:12px;
+            padding:14px;
+            border-radius:10px;
+            background:#eff6ff;
+            border:1px solid #bfdbfe;
+        }
+
+        .info-title{
+            margin:0 0 8px;
+            color:#2563eb;
+            font-weight:700;
+        }
+
+        .muted{
+            color:#64748b;
+        }
+
+        .error-text{
+            color:#dc2626;
+            font-weight:600;
+        }
+
+        .success-text{
+            color:#16a34a;
+            font-weight:600;
+        }
+
+        .status{
+            margin-top:12px;
+            font-weight:600;
+        }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <h2>Issue Book</h2>
+    <button class="btn-gray" type="button" onclick="goBack()">Back</button>
+</div>
+
+<div class="content">
+    <div class="panel">
+        <h3>Issue Book</h3>
+
+        <div class="form-grid">
+            <div>
+                <input id="userId" type="number" placeholder="User ID">
+                <div id="userInfo"></div>
+            </div>
+
+            <div>
+                <input id="bookId" type="number" placeholder="Book ID">
+                <div id="bookInfo"></div>
+            </div>
+        </div>
+
+        <div class="button-row">
+            <button class="btn-primary" type="button" onclick="issueBook()">
+                Issue Book
+            </button>
+        </div>
+
+        <div id="message" class="status"></div>
+    </div>
+</div>
+
+<script>
+    const API_BASE = "http://localhost:8080/api";
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
+
+    const userIdInput = document.getElementById("userId");
+    const bookIdInput = document.getElementById("bookId");
+    const userInfoDiv = document.getElementById("userInfo");
+    const bookInfoDiv = document.getElementById("bookInfo");
+    const messageDiv = document.getElementById("message");
+
+    if(!token){
+        location.href = "index.html";
+    }
+
+    if(
+        role !== "ROLE_ADMIN" &&
+        role !== "ROLE_LIBRARIAN"
+    ){
+        alert("Access Denied");
+        location.href = "member-dashboard.html";
+    }
+
+    function setMessage(text, type = "") {
+        messageDiv.className = `status ${type}`;
+        messageDiv.textContent = text || "";
+    }
+
+    function showUserInfo(user) {
+        userInfoDiv.innerHTML = `
+            <div class="info-box">
+                <div class="info-title">User Details</div>
+                <div><b>Name:</b> ${user.name ?? "-"}</div>
+                <div><b>Email:</b> ${user.email ?? "-"}</div>
+                <div><b>Role:</b> ${user.role ?? "-"}</div>
+            </div>
+        `;
+    }
+
+    function showBookInfo(book) {
+        bookInfoDiv.innerHTML = `
+            <div class="info-box">
+                <div class="info-title">Book Details</div>
+                <div><b>Title:</b> ${book.title ?? "-"}</div>
+                <div><b>Author:</b> ${book.author ?? "-"}</div>
+                <div><b>Publisher:</b> ${book.publisher ?? "-"}</div>
+                <div><b>Category:</b> ${book.categoryName ?? book.category?.name ?? "-"}</div>
+                <div><b>Available Copies:</b> ${book.availableCopies ?? "-"}</div>
+            </div>
+        `;
+    }
+
+    function clearUserInfo() {
+        userInfoDiv.innerHTML = "";
+    }
+
+    function clearBookInfo() {
+        bookInfoDiv.innerHTML = "";
+    }
+
+    async function fetchUser(userId) {
+        if(!userId) {
+            clearUserInfo();
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/users/${userId}`, {
+                headers: {
+                    "Authorization": "Bearer " + token
+                }
+            });
+
+            if(!response.ok) {
+                clearUserInfo();
+                userInfoDiv.innerHTML = `
+                    <div class="info-box">
+                        <div class="error-text">User not found</div>
+                    </div>
+                `;
+                return;
+            }
+
+            const user = await response.json();
+            showUserInfo(user);
+
+        } catch (error) {
+            console.error(error);
+            clearUserInfo();
+            userInfoDiv.innerHTML = `
+                <div class="info-box">
+                    <div class="error-text">Unable to load user</div>
+                </div>
+            `;
+        }
+    }
+
+    async function fetchBook(bookId) {
+        if(!bookId) {
+            clearBookInfo();
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/books/${bookId}`, {
+                headers: {
+                    "Authorization": "Bearer " + token
+                }
+            });
+
+            if(!response.ok) {
+                clearBookInfo();
+                bookInfoDiv.innerHTML = `
+                    <div class="info-box">
+                        <div class="error-text">Book not found</div>
+                    </div>
+                `;
+                return;
+            }
+
+            const book = await response.json();
+            showBookInfo(book);
+
+        } catch (error) {
+            console.error(error);
+            clearBookInfo();
+            bookInfoDiv.innerHTML = `
+                <div class="info-box">
+                    <div class="error-text">Unable to load book</div>
+                </div>
+            `;
+        }
+    }
+
+    function debounce(fn, delay = 400) {
+        let timer;
+        return (...args) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn(...args), delay);
+        };
+    }
+
+    const debouncedFetchUser = debounce(() => {
+        const userId = userIdInput.value.trim();
+        fetchUser(userId);
+    }, 500);
+
+    const debouncedFetchBook = debounce(() => {
+        const bookId = bookIdInput.value.trim();
+        fetchBook(bookId);
+    }, 500);
+
+    userIdInput.addEventListener("input", debouncedFetchUser);
+    bookIdInput.addEventListener("input", debouncedFetchBook);
+
+    async function issueBook(){
+        try {
+            const userId = Number(userIdInput.value);
+            const bookId = Number(bookIdInput.value);
+
+            if(!userId || !bookId){
+                setMessage("Please enter User ID and Book ID", "error-text");
+                return;
+            }
+
+            setMessage("Issuing book...", "muted");
+
+            const response = await fetch(`${API_BASE}/issues`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + token
+                },
+                body: JSON.stringify({
+                    userId: userId,
+                    bookId: bookId
+                })
+            });
+
+            const message = await response.text();
+
+            if(!response.ok){
+                throw new Error(message || "Failed to issue book");
+            }
+
+            setMessage(message || "Book issued successfully", "success-text");
+
+            userIdInput.value = "";
+            bookIdInput.value = "";
+            clearUserInfo();
+            clearBookInfo();
+
+            alert(message || "Book Issued Successfully");
+
+            if(role === "ROLE_ADMIN"){
+                location.href = "dashboard.html";
+            } else {
+                location.href = "librarian-dashboard.html";
+            }
+
+        } catch (error) {
+            console.error(error);
+            setMessage(error.message || "Error issuing book", "error-text");
+        }
+    }
+
+    function goBack(){
+        if(role === "ROLE_ADMIN"){
+            location.href = "dashboard.html";
+        } else if(role === "ROLE_LIBRARIAN"){
+            location.href = "librarian-dashboard.html";
+        } else {
+            location.href = "member-dashboard.html";
+        }
+    }
+</script>
+
+</body>
+</html>

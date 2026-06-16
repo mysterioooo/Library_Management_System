@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fines</title>
+
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+
+        body{
+            margin:0;
+            background:#f5f7fb;
+            font-family:Arial,sans-serif;
+        }
+
+        .topbar{
+            background:#2563eb;
+            color:white;
+            padding:15px 24px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+        }
+
+        .content{
+            padding:24px;
+            max-width:1300px;
+            margin:auto;
+        }
+
+        .panel{
+            background:white;
+            padding:20px;
+            border-radius:12px;
+            box-shadow:0 4px 14px rgba(0,0,0,.08);
+        }
+
+        table{
+            width:100%;
+            border-collapse:collapse;
+            margin-top:15px;
+        }
+
+        th,td{
+            border-bottom:1px solid #e5e7eb;
+            padding:12px;
+            text-align:left;
+        }
+
+        th{
+            background:#eff6ff;
+        }
+
+        .btn{
+            border:none;
+            padding:10px 14px;
+            border-radius:8px;
+            cursor:pointer;
+            color:white;
+            font-weight:bold;
+        }
+
+        .btn-pay{
+            background:#16a34a;
+        }
+
+        .btn-pay:hover{
+            background:#15803d;
+        }
+
+        .btn-back{
+            background:#64748b;
+        }
+
+        .btn-back:hover{
+            background:#475569;
+        }
+
+        .paid{
+            color:green;
+            font-weight:bold;
+        }
+
+        .pending{
+            color:red;
+            font-weight:bold;
+        }
+
+        .empty{
+            text-align:center;
+            color:#64748b;
+        }
+
+        .qr-image{
+            width:100px;
+            height:100px;
+            border:1px solid #ddd;
+            border-radius:8px;
+        }
+
+    </style>
+
+</head>
+<body>
+
+<div class="topbar">
+
+    <h2>Fine Management</h2>
+
+    <button
+            class="btn btn-back"
+            onclick="goBack()">
+        Back
+    </button>
+
+</div>
+
+<div class="content">
+
+    <div class="panel">
+
+        <h3>All Fines</h3>
+
+        <table>
+
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Issue ID</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>QR Code</th>
+                <th>Action</th>
+            </tr>
+            </thead>
+
+            <tbody id="fineBody"></tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+<script>
+
+    const API_BASE =
+        "http://localhost:8080/api";
+
+    const token =
+        localStorage.getItem("token");
+
+    const role =
+        localStorage.getItem("role");
+
+    if(!token){
+
+        location.href =
+            "index.html";
+    }
+
+    loadFines();
+
+    async function loadFines(){
+
+        try{
+
+            const response =
+                await fetch(
+                    `${API_BASE}/fines`,
+                    {
+                        headers:{
+                            "Authorization":
+                                "Bearer " + token
+                        }
+                    });
+
+            if(!response.ok){
+
+                const error =
+                    await response.text();
+
+                throw new Error(error);
+            }
+
+            const fines =
+                await response.json();
+
+            const tbody =
+                document.getElementById(
+                    "fineBody");
+
+            if(!fines || fines.length === 0){
+
+                tbody.innerHTML = `
+                <tr>
+                    <td colspan="6"
+                        class="empty">
+                        No fines found
+                    </td>
+                </tr>
+                `;
+
+                return;
+            }
+
+            let html = "";
+
+            fines.forEach(fine => {
+
+                html += `
+                <tr>
+
+                    <td>${fine.id}</td>
+
+                    <td>
+                        ${fine.issueBook?.id ?? "-"}
+                    </td>
+
+                    <td>
+                        ₹${fine.amount}
+                    </td>
+
+                    <td>
+                        ${
+                            fine.paid
+                            ? '<span class="paid">PAID</span>'
+                            : '<span class="pending">PENDING</span>'
+                        }
+                    </td>
+
+                    <td>
+                        <img
+                            class="qr-image"
+                            src="${API_BASE}/fines/qr/${fine.id}"
+                            alt="QR Code">
+                    </td>
+
+                    <td>
+
+                        ${
+                            fine.paid
+                            ? "Completed"
+                            : `
+                            <button
+                                class="btn btn-pay"
+                                onclick="payFine(${fine.id})">
+                                Pay Fine
+                            </button>
+                            `
+                        }
+
+                    </td>
+
+                </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+
+        }catch(error){
+
+            console.error(error);
+
+            alert(
+                error.message ||
+                "Unable to load fines");
+        }
+    }
+
+    async function payFine(fineId){
+
+    if(!confirm(
+        "Pay this fine?"
+    )){
+        return;
+    }
+
+    try{
+
+        const response =
+            await fetch(
+                `${API_BASE}/fines/pay/${fineId}`,
+                {
+                    method:"POST",
+
+                    headers:{
+                        "Authorization":
+                            "Bearer " + token
+                    }
+                });
+
+        const message =
+            await response.text();
+
+        if(!response.ok){
+
+            throw new Error(
+                message ||
+                "Payment failed");
+        }
+
+        alert(message);
+
+        // Find fine record
+        const finesResponse =
+            await fetch(
+                `${API_BASE}/fines`,
+                {
+                    headers:{
+                        "Authorization":
+                            "Bearer " + token
+                    }
+                });
+
+        const fines =
+            await finesResponse.json();
+
+        const fine =
+            fines.find(f => f.id === fineId);
+
+        if(
+            fine &&
+            fine.issueBook &&
+            fine.issueBook.id
+        ){
+
+            const returnResponse =
+                await fetch(
+                    `${API_BASE}/issues/return/${fine.issueBook.id}`,
+                    {
+                        method:"POST",
+
+                        headers:{
+                            "Authorization":
+                                "Bearer " + token
+                        }
+                    });
+
+            const returnMessage =
+                await returnResponse.text();
+
+            if(returnResponse.ok){
+
+                alert(
+                    "Book Returned Successfully"
+                );
+
+            }else{
+
+                alert(
+                    returnMessage
+                );
+            }
+        }
+
+        loadFines();
+
+    }catch(error){
+
+        console.error(error);
+
+        alert(
+            error.message ||
+            "Payment failed");
+    }
+}
+
+    function goBack(){
+
+        if(role === "ROLE_ADMIN"){
+
+            location.href =
+                "dashboard.html";
+
+        }
+        else if(role === "ROLE_LIBRARIAN"){
+
+            location.href =
+                "librarian-dashboard.html";
+
+        }
+        else{
+
+            location.href =
+                "member-dashboard.html";
+        }
+    }
+
+    const params =
+    new URLSearchParams(
+        window.location.search
+    );
+
+const issueId =
+    params.get("issueId");
+
+if(issueId){
+
+    alert(
+        "Please pay fine for Issue ID: "
+        + issueId
+    );
+}
+
+</script>
+
+</body>
+</html>

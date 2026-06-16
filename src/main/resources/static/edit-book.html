@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Edit Book</title>
+
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+
+        body{
+            margin:0;
+            background:#f5f7fb;
+            font-family:Arial,sans-serif;
+        }
+
+        nav{
+            background:#2563eb;
+            color:white;
+            padding:15px 25px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+        }
+
+        nav button{
+            background:white;
+            color:#2563eb;
+            border:none;
+            padding:10px 15px;
+            border-radius:8px;
+            cursor:pointer;
+            font-weight:bold;
+        }
+
+        .container{
+            max-width:900px;
+            margin:30px auto;
+            padding:20px;
+        }
+
+        .card{
+            background:white;
+            padding:25px;
+            border-radius:12px;
+            box-shadow:0 4px 12px rgba(0,0,0,.08);
+        }
+
+        h2{
+            margin-top:0;
+        }
+
+        .form-group{
+            margin-bottom:15px;
+        }
+
+        label{
+            display:block;
+            margin-bottom:5px;
+            font-weight:bold;
+        }
+
+        input,select{
+            width:100%;
+            padding:12px;
+            border:1px solid #ddd;
+            border-radius:8px;
+            box-sizing:border-box;
+        }
+
+        .button-row{
+            margin-top:20px;
+            display:flex;
+            gap:10px;
+        }
+
+        button{
+            background:#2563eb;
+            color:white;
+            border:none;
+            padding:12px 18px;
+            border-radius:8px;
+            cursor:pointer;
+        }
+
+        button:hover{
+            background:#1d4ed8;
+        }
+
+        .secondary{
+            background:#6b7280;
+        }
+
+        .secondary:hover{
+            background:#4b5563;
+        }
+
+    </style>
+
+</head>
+<body>
+
+<nav>
+
+    <h2>Edit Book</h2>
+
+    <button onclick="goBack()">
+        Back
+    </button>
+
+</nav>
+
+<div class="container">
+
+    <div class="card">
+
+        <div class="form-group">
+            <label>ISBN</label>
+            <input type="text" id="isbn">
+        </div>
+
+        <div class="form-group">
+            <label>Title</label>
+            <input type="text" id="title">
+        </div>
+
+        <div class="form-group">
+            <label>Author</label>
+            <input type="text" id="author">
+        </div>
+
+        <div class="form-group">
+            <label>Publisher</label>
+            <input type="text" id="publisher">
+        </div>
+
+        <div class="form-group">
+            <label>Current Image</label>
+
+            <img
+                    id="imagePreview"
+                    src=""
+                    width="120"
+                    height="150"
+                    style="
+                object-fit:cover;
+                border:1px solid #ddd;
+                border-radius:8px;
+                display:block;
+                margin-bottom:10px;
+            ">
+        </div>
+
+        <div class="form-group">
+            <label>Change Book Image</label>
+
+            <input
+                    type="file"
+                    id="bookImage"
+                    accept="image/*">
+        </div>
+        <div class="form-group">
+            <label>Category</label>
+
+            <select id="categoryId">
+                <option value="">
+                    Select Category
+                </option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Total Copies</label>
+            <input type="number"
+                   id="totalCopies">
+        </div>
+
+        <div class="button-row">
+
+            <button onclick="updateBook()">
+                Update Book
+            </button>
+
+            <button
+                    class="secondary"
+                    onclick="goBack()">
+                Cancel
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+    const API_BASE = "http://localhost:8080/api";
+    const token = localStorage.getItem("token");
+
+    const params = new URLSearchParams(window.location.search);
+    const bookId = params.get("id");
+
+    let currentImageName = null;
+
+    const isbnInput = document.getElementById("isbn");
+    const titleInput = document.getElementById("title");
+    const authorInput = document.getElementById("author");
+    const publisherInput = document.getElementById("publisher");
+    const categorySelect = document.getElementById("categoryId");
+    const totalCopiesInput = document.getElementById("totalCopies");
+    const imagePreview = document.getElementById("imagePreview");
+    const bookImageInput = document.getElementById("bookImage");
+
+    async function loadCategories() {
+
+        try {
+
+            const response =
+                await fetch(
+                    `${API_BASE}/categories`,
+                    {
+                        headers:{
+                            "Authorization":
+                                "Bearer " + token
+                        }
+                    });
+
+            const categories =
+                await response.json();
+
+            let html =
+                '<option value="">Select Category</option>';
+
+            categories.forEach(category => {
+
+                html += `
+                <option value="${category.id}">
+                    ${category.name}
+                </option>`;
+            });
+
+            categorySelect.innerHTML =
+                html;
+
+        } catch(error){
+
+            console.error(error);
+        }
+    }
+
+    async function loadBook() {
+
+        try {
+
+            const response =
+                await fetch(
+                    `${API_BASE}/books/${bookId}`,
+                    {
+                        headers:{
+                            "Authorization":
+                                "Bearer " + token
+                        }
+                    });
+
+            if(!response.ok){
+
+                throw new Error(
+                    "Failed to load book");
+            }
+
+            const book =
+                await response.json();
+
+            isbnInput.value =
+                book.isbn || "";
+
+            titleInput.value =
+                book.title || "";
+
+            authorInput.value =
+                book.author || "";
+
+            publisherInput.value =
+                book.publisher || "";
+
+            totalCopiesInput.value =
+                book.totalCopies || "";
+
+            categorySelect.value =
+                book.categoryId || "";
+
+            currentImageName =
+                book.imageName;
+
+            if(book.imageName){
+
+                imagePreview.src =
+                    `http://localhost:8080/uploads/books/${book.imageName}`;
+
+            }else{
+
+                imagePreview.src =
+                    "images/no-book.png";
+            }
+
+        } catch(error){
+
+            console.error(error);
+
+            alert(
+                "Unable to load book");
+        }
+    }
+
+    bookImageInput.addEventListener(
+        "change",
+        function(){
+
+            const file =
+                this.files[0];
+
+            if(file){
+
+                imagePreview.src =
+                    URL.createObjectURL(file);
+            }
+        });
+
+    async function uploadImage() {
+
+        const file =
+            bookImageInput.files[0];
+
+        if(!file){
+
+            return null;
+        }
+
+        const formData =
+            new FormData();
+
+        formData.append(
+            "file",
+            file);
+
+        const response =
+            await fetch(
+                `${API_BASE}/files/upload-book-image`,
+                {
+                    method:"POST",
+                    headers:{
+                        "Authorization":
+                            "Bearer " + token
+                    },
+                    body:formData
+                });
+
+        if(!response.ok){
+
+            throw new Error(
+                "Image upload failed");
+        }
+
+        return await response.text();
+    }
+
+    async function updateBook() {
+
+        try {
+
+            let imageName =
+                currentImageName;
+
+            const uploadedImage =
+                await uploadImage();
+
+            if(uploadedImage){
+
+                imageName =
+                    uploadedImage;
+            }
+
+            const payload = {
+
+                isbn:
+                    isbnInput.value.trim(),
+
+                title:
+                    titleInput.value.trim(),
+
+                author:
+                    authorInput.value.trim(),
+
+                publisher:
+                    publisherInput.value.trim(),
+
+                imageName:
+                    imageName,
+
+                categoryId:
+                    Number(
+                        categorySelect.value),
+
+                totalCopies:
+                    Number(
+                        totalCopiesInput.value)
+            };
+
+            const response =
+                await fetch(
+                    `${API_BASE}/books/${bookId}`,
+                    {
+                        method:"PUT",
+                        headers:{
+                            "Content-Type":
+                                "application/json",
+                            "Authorization":
+                                "Bearer " + token
+                        },
+                        body:
+                            JSON.stringify(
+                                payload)
+                    });
+
+            if(!response.ok){
+
+                const err =
+                    await response.text();
+
+                throw new Error(err);
+            }
+
+            alert(
+                "Book updated successfully");
+
+            location.href =
+                "books.html";
+
+        } catch(error){
+
+            console.error(error);
+
+            alert(error.message);
+        }
+    }
+
+    function goBack(){
+
+        location.href =
+            "books.html";
+    }
+
+    async function init(){
+
+        await loadCategories();
+        await loadBook();
+    }
+
+    init();
+
+</script>
+
+</body>
+</html>

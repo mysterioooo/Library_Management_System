@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fine Payment</title>
+
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+
+        body{
+            margin:0;
+            background:#f5f7fb;
+            font-family:Arial,sans-serif;
+        }
+
+        nav{
+            background:#2563eb;
+            color:white;
+            padding:15px 25px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+        }
+
+        nav button{
+            background:white;
+            color:#2563eb;
+            border:none;
+            padding:10px 15px;
+            border-radius:8px;
+            cursor:pointer;
+            font-weight:bold;
+        }
+
+        .container{
+            max-width:1200px;
+            margin:30px auto;
+            padding:20px;
+        }
+
+        .card{
+            background:white;
+            padding:20px;
+            border-radius:12px;
+            box-shadow:0 4px 12px rgba(0,0,0,.08);
+        }
+
+        table{
+            width:100%;
+            border-collapse:collapse;
+        }
+
+        th,td{
+            border-bottom:1px solid #e5e7eb;
+            padding:12px;
+            text-align:left;
+        }
+
+        th{
+            background:#eff6ff;
+        }
+
+        .pay-btn{
+            background:#16a34a;
+            color:white;
+            border:none;
+            padding:8px 12px;
+            border-radius:6px;
+            cursor:pointer;
+        }
+
+        .pay-btn:hover{
+            background:#15803d;
+        }
+
+        .paid{
+            color:green;
+            font-weight:bold;
+        }
+
+        .pending{
+            color:red;
+            font-weight:bold;
+        }
+
+        img{
+            max-width:120px;
+        }
+
+    </style>
+
+</head>
+<body>
+
+<nav>
+
+    <h2>Fine Payment</h2>
+
+    <button onclick="goBack()">
+        Dashboard
+    </button>
+
+</nav>
+
+<div class="container">
+
+    <div class="card">
+
+        <h3>Fine List</h3>
+
+        <table>
+
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Issue ID</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>QR</th>
+                <th>Action</th>
+            </tr>
+            </thead>
+
+            <tbody id="fineBody"></tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+<script>
+
+    const API_BASE =
+        "http://localhost:8080/api";
+
+    const token =
+        localStorage.getItem("token");
+
+    const role =
+        localStorage.getItem("role");
+
+    if(!token){
+
+        location.href =
+            "index.html";
+    }
+
+    loadFines();
+
+    async function loadFines(){
+
+        try{
+
+            const response =
+                await fetch(
+                    `${API_BASE}/fines`,
+                    {
+                        headers:{
+                            "Authorization":
+                                "Bearer " + token
+                        }
+                    });
+
+            if(!response.ok){
+
+                throw new Error(
+                    "Unable to load fines");
+            }
+
+            const fines =
+                await response.json();
+
+            if(fines.length === 0){
+
+                document.getElementById(
+                    "fineBody"
+                ).innerHTML =
+                `
+                <tr>
+                    <td colspan="6"
+                        style="text-align:center">
+                        No Fines Found
+                    </td>
+                </tr>
+                `;
+
+                return;
+            }
+
+            let html = "";
+
+            fines.forEach(fine => {
+
+                html += `
+                <tr>
+
+                    <td>${fine.id}</td>
+
+                    <td>
+                        ${fine.issueBook?.id ?? "-"}
+                    </td>
+
+                    <td>
+                        ₹${fine.amount}
+                    </td>
+
+                    <td>
+                        ${
+                            fine.paid
+                            ? '<span class="paid">PAID</span>'
+                            : '<span class="pending">PENDING</span>'
+                        }
+                    </td>
+
+                    <td>
+
+                        <img
+                            src="${API_BASE}/fines/qr/${fine.id}"
+                            alt="QR">
+
+                    </td>
+
+                    <td>
+
+                        ${
+                            fine.paid
+                            ? "Completed"
+                            : `
+                            <button
+                                class="pay-btn"
+                                onclick="payFine(${fine.id})">
+                                Pay
+                            </button>
+                            `
+                        }
+
+                    </td>
+
+                </tr>
+                `;
+            });
+
+            document.getElementById(
+                "fineBody"
+            ).innerHTML = html;
+
+        }catch(error){
+
+            console.error(error);
+
+            alert(
+                "Unable to load fines");
+        }
+    }
+
+    async function payFine(id){
+
+        if(!confirm(
+            "Pay this fine?"
+        )){
+            return;
+        }
+
+        try{
+
+            const response =
+                await fetch(
+                    `${API_BASE}/fines/pay/${id}`,
+                    {
+                        method:"POST",
+
+                        headers:{
+                            "Authorization":
+                                "Bearer " + token
+                        }
+                    });
+
+            if(!response.ok){
+
+                throw new Error(
+                    "Payment failed");
+            }
+
+            const message =
+                await response.text();
+
+            alert(message);
+
+            loadFines();
+
+        }catch(error){
+
+            console.error(error);
+
+            alert(
+                error.message ||
+                "Payment failed");
+        }
+    }
+
+    function goBack(){
+
+        if(role === "ROLE_ADMIN"){
+
+            location.href =
+                "dashboard.html";
+
+        }else if(role === "ROLE_LIBRARIAN"){
+
+            location.href =
+                "librarian-dashboard.html";
+
+        }else{
+
+            location.href =
+                "member-dashboard.html";
+        }
+    }
+
+</script>
+
+</body>
+</html>

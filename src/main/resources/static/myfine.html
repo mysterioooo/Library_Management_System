@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>My Fines</title>
+
+    <style>
+
+        body{
+            margin:0;
+            background:#f5f7fb;
+            font-family:Arial,sans-serif;
+        }
+
+        .topbar{
+            background:#2563eb;
+            color:white;
+            padding:15px 25px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+        }
+
+        .container{
+            padding:25px;
+        }
+
+        .card{
+            background:white;
+            padding:20px;
+            border-radius:12px;
+            box-shadow:0 4px 12px rgba(0,0,0,.08);
+        }
+
+        table{
+            width:100%;
+            border-collapse:collapse;
+        }
+
+        th,td{
+            border:1px solid #e5e7eb;
+            padding:12px;
+            text-align:left;
+        }
+
+        th{
+            background:#eff6ff;
+        }
+
+        button{
+            background:#16a34a;
+            color:white;
+            border:none;
+            padding:8px 14px;
+            border-radius:8px;
+            cursor:pointer;
+        }
+
+        button:hover{
+            background:#15803d;
+        }
+
+        .paid{
+            color:green;
+            font-weight:bold;
+        }
+
+        .pending{
+            color:red;
+            font-weight:bold;
+        }
+
+        .qr-image{
+            width:90px;
+            height:90px;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+
+    <h2>My Fines</h2>
+
+    <button onclick="goBack()">
+        Dashboard
+    </button>
+
+</div>
+
+<div class="container">
+
+    <div class="card">
+
+        <h3>Pending / Paid Fines</h3>
+
+        <table>
+
+            <thead>
+            <tr>
+                <th>Fine ID</th>
+                <th>Issue ID</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>QR</th>
+
+            </tr>
+            </thead>
+
+            <tbody id="fineBody">
+
+            <tr>
+                <td colspan="6">
+                    Loading...
+                </td>
+            </tr>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+<script>
+
+    const API_BASE =
+        "http://localhost:8080/api";
+
+    const token =
+        localStorage.getItem("token");
+
+    const role =
+        localStorage.getItem("role");
+
+    const userId =
+        localStorage.getItem("userId");
+
+    if(
+        !token ||
+        role !== "ROLE_MEMBER"
+    ){
+        location.href =
+            "index.html";
+    }
+
+    loadFines();
+
+    async function loadFines(){
+
+        try{
+
+            const response =
+                await fetch(
+                    `${API_BASE}/fines/user/${userId}`,
+                    {
+                        headers:{
+                            "Authorization":
+                                "Bearer " + token
+                        }
+                    });
+
+            if(!response.ok){
+
+                throw new Error(
+                    "Failed to load fines"
+                );
+            }
+
+            const fines =
+                await response.json();
+
+            let html = "";
+
+            if(
+                !fines ||
+                fines.length === 0
+            ){
+
+                html = `
+                <tr>
+                    <td colspan="5">
+                        No Fines Found
+                    </td>
+                </tr>
+                `;
+
+            }else{
+
+                fines.forEach(fine => {
+
+                    html += `
+                    <tr>
+
+                        <td>
+                            ${fine.id}
+                        </td>
+
+                        <td>
+                            ${fine.issueBook?.id ?? "-"}
+                        </td>
+
+                        <td>
+                            ₹${fine.amount}
+                        </td>
+
+                        <td>
+                            ${
+                                fine.paid
+                                ?
+                                `<span class="paid">
+                                    PAID
+                                 </span>`
+                                :
+                                `<span class="pending">
+                                    PENDING
+                                 </span>`
+                            }
+                        </td>
+
+                        <td>
+                            ${
+                                !fine.paid
+                                ?
+                                `
+                                <img
+                                    class="qr-image"
+                                    src="${API_BASE}/fines/qr/${fine.id}"
+                                    alt="QR Code">
+                                `
+                                :
+                                "-"
+                            }
+                        </td>
+
+                    </tr>
+                    `;
+                });
+            }
+
+            document.getElementById(
+                "fineBody"
+            ).innerHTML = html;
+
+        }catch(error){
+
+            console.error(error);
+
+            document.getElementById(
+                "fineBody"
+            ).innerHTML = `
+            <tr>
+                <td colspan="5">
+                    Failed To Load Fines
+                </td>
+            </tr>
+            `;
+        }
+    }
+
+    function goBack(){
+
+        location.href =
+            "member-dashboard.html";
+    }
+
+</script>
+
+</body>
+</html>

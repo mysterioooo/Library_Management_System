@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>User Details</title>
+
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+
+        body{
+            margin:0;
+            background:#f5f7fb;
+            font-family:Arial,sans-serif;
+        }
+
+        nav{
+            background:#2563eb;
+            color:white;
+            padding:15px 25px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+        }
+
+        nav button{
+            background:white;
+            color:#2563eb;
+            border:none;
+            padding:10px 15px;
+            border-radius:8px;
+            cursor:pointer;
+            font-weight:bold;
+        }
+
+        .container{
+            max-width:900px;
+            margin:30px auto;
+            padding:20px;
+        }
+
+        .card{
+            background:white;
+            padding:25px;
+            border-radius:12px;
+            box-shadow:0 4px 12px rgba(0,0,0,.08);
+        }
+
+        .row{
+            display:grid;
+            grid-template-columns:200px 1fr;
+            padding:14px 0;
+            border-bottom:1px solid #eee;
+        }
+
+        .label{
+            font-weight:bold;
+            color:#555;
+        }
+
+        .value{
+            color:#222;
+        }
+
+        .actions{
+            margin-top:20px;
+            display:flex;
+            gap:10px;
+        }
+
+        .btn{
+            background:#2563eb;
+            color:white;
+            border:none;
+            padding:10px 15px;
+            border-radius:8px;
+            cursor:pointer;
+        }
+
+        .btn:hover{
+            background:#1d4ed8;
+        }
+
+    </style>
+
+</head>
+<body>
+
+<nav>
+
+    <h2>User Details</h2>
+
+    <button onclick="goBack()">
+        Back
+    </button>
+
+</nav>
+
+<div class="container">
+
+    <div class="card">
+
+        <div class="row">
+            <div class="label">User ID</div>
+            <div class="value" id="id"></div>
+        </div>
+
+        <div class="row">
+            <div class="label">Name</div>
+            <div class="value" id="name"></div>
+        </div>
+
+        <div class="row">
+            <div class="label">Email</div>
+            <div class="value" id="email"></div>
+        </div>
+
+        <div class="row">
+            <div class="label">Role</div>
+            <div class="value" id="role"></div>
+        </div>
+
+        <div class="actions">
+
+            <button class="btn"
+                    onclick="goBack()">
+                Back To Users
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+    const API_BASE =
+        "http://localhost:8080/api";
+
+    const token =
+        localStorage.getItem("token");
+
+    const userRole =
+        localStorage.getItem("role");
+
+    if(!token){
+
+        location.href =
+            "index.html";
+    }
+
+    if(userRole !== "ROLE_ADMIN"){
+
+        alert(
+            "Access Denied");
+
+        location.href =
+            "dashboard.html";
+    }
+
+    const params =
+        new URLSearchParams(
+            window.location.search);
+
+    const userId =
+        params.get("id");
+
+    if(!userId){
+
+        alert(
+            "Invalid User");
+
+        location.href =
+            "users.html";
+    }
+
+    async function loadUser(){
+
+        try{
+
+            const response =
+                await fetch(
+                    `${API_BASE}/users/${userId}`,
+                    {
+                        headers:{
+                            "Authorization":
+                                "Bearer " + token
+                        }
+                    });
+
+            if(!response.ok){
+
+                throw new Error(
+                    "User not found");
+            }
+
+            const user =
+                await response.json();
+
+            document.getElementById(
+                "id").innerText =
+                user.id ?? "-";
+
+            document.getElementById(
+                "name").innerText =
+                user.name ?? "-";
+
+            document.getElementById(
+                "email").innerText =
+                user.email ?? "-";
+
+            document.getElementById(
+                "role").innerText =
+                user.role ?? "-";
+
+        }
+        catch(error){
+
+            console.error(error);
+
+            alert(
+                "Unable to load user details");
+
+            location.href =
+                "users.html";
+        }
+    }
+
+    function goBack(){
+
+        location.href =
+            "users.html";
+    }
+
+    loadUser();
+
+</script>
+
+</body>
+</html>

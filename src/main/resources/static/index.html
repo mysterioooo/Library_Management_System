@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Library Management System</title>
+
+    <style>
+
+        *{
+            margin:0;
+            padding:0;
+            box-sizing:border-box;
+            font-family:'Segoe UI',sans-serif;
+        }
+
+        body{
+            min-height:100vh;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            background:
+                linear-gradient(
+                    135deg,
+                    #2563eb,
+                    #7c3aed
+                );
+            overflow:hidden;
+        }
+
+        body::before{
+            content:"";
+            position:absolute;
+            width:350px;
+            height:350px;
+            background:rgba(255,255,255,.15);
+            border-radius:50%;
+            top:-100px;
+            left:-100px;
+        }
+
+        body::after{
+            content:"";
+            position:absolute;
+            width:300px;
+            height:300px;
+            background:rgba(255,255,255,.1);
+            border-radius:50%;
+            bottom:-100px;
+            right:-80px;
+        }
+
+        .login-card{
+            width:420px;
+            padding:40px;
+            border-radius:24px;
+            background:rgba(255,255,255,.15);
+            backdrop-filter:blur(18px);
+            border:1px solid rgba(255,255,255,.25);
+            box-shadow:
+                0 8px 32px rgba(0,0,0,.2);
+            color:white;
+            position:relative;
+            z-index:10;
+        }
+
+        .logo{
+            text-align:center;
+            font-size:60px;
+            margin-bottom:10px;
+        }
+
+        h2{
+            text-align:center;
+            margin-bottom:10px;
+            font-size:28px;
+        }
+
+        .subtitle{
+            text-align:center;
+            opacity:.9;
+            margin-bottom:30px;
+            font-size:14px;
+        }
+
+        .input-group{
+            margin-bottom:18px;
+        }
+
+        .input-group label{
+            display:block;
+            margin-bottom:6px;
+            font-size:14px;
+        }
+
+        .input-group input{
+            width:100%;
+            padding:14px;
+            border:none;
+            border-radius:12px;
+            outline:none;
+            background:rgba(255,255,255,.2);
+            color:white;
+            font-size:15px;
+        }
+
+        .input-group input::placeholder{
+            color:rgba(255,255,255,.7);
+        }
+
+        .input-group input:focus{
+            background:rgba(255,255,255,.3);
+        }
+
+        .login-btn{
+            width:100%;
+            padding:14px;
+            border:none;
+            border-radius:12px;
+            background:white;
+            color:#2563eb;
+            font-size:16px;
+            font-weight:bold;
+            cursor:pointer;
+            transition:.3s;
+        }
+
+        .login-btn:hover{
+            transform:translateY(-2px);
+            box-shadow:
+                0 8px 20px rgba(0,0,0,.2);
+        }
+
+        .register{
+            text-align:center;
+            margin-top:20px;
+            font-size:14px;
+        }
+
+        .register a{
+            color:white;
+            font-weight:bold;
+            text-decoration:none;
+        }
+
+        .register a:hover{
+            text-decoration:underline;
+        }
+
+        .footer{
+            margin-top:25px;
+            text-align:center;
+            font-size:12px;
+            opacity:.8;
+        }
+
+        @media(max-width:500px){
+
+            .login-card{
+                width:92%;
+                padding:30px 20px;
+            }
+        }
+
+    </style>
+
+</head>
+<body>
+
+<div class="login-card">
+
+    <div class="logo">
+        📚
+    </div>
+
+    <h2>Library Management System</h2>
+
+    <p class="subtitle">
+        Sign in to continue
+    </p>
+
+    <form id="loginForm">
+
+        <div class="input-group">
+            <label>Email Address</label>
+
+            <input
+                    type="email"
+                    id="email"
+                    placeholder="Enter email"
+                    required>
+        </div>
+
+        <div class="input-group">
+            <label>Password</label>
+
+            <input
+                    type="password"
+                    id="password"
+                    placeholder="Enter password"
+                    required>
+        </div>
+
+        <button
+                type="submit"
+                class="login-btn">
+            Login
+        </button>
+
+    </form>
+
+    <div class="register">
+        Don't have an account?
+        <a href="register.html">
+            Register
+        </a>
+    </div>
+
+    <div class="footer">
+        © 2026 Library Management System
+    </div>
+
+</div>
+
+<script>
+
+    const API_BASE =
+        "http://localhost:8080/api";
+
+    const form =
+        document.getElementById(
+            "loginForm"
+        );
+
+    form.addEventListener(
+        "submit",
+        async function(e){
+
+            e.preventDefault();
+
+            try{
+
+                const response =
+                    await fetch(
+                        `${API_BASE}/auth/login`,
+                        {
+                            method:"POST",
+
+                            headers:{
+                                "Content-Type":
+                                    "application/json"
+                            },
+
+                            body:JSON.stringify({
+                                email:
+                                    document.getElementById(
+                                        "email"
+                                    ).value.trim(),
+
+                                password:
+                                    document.getElementById(
+                                        "password"
+                                    ).value
+                            })
+                        });
+
+                if(!response.ok){
+
+                    throw new Error(
+                        "Invalid Login"
+                    );
+                }
+
+                const data =
+                    await response.json();
+
+                localStorage.setItem(
+                    "token",
+                    data.token
+                );
+
+                localStorage.setItem(
+                    "role",
+                    data.role
+                );
+
+                localStorage.setItem(
+                    "userId",
+                    data.userId
+                );
+
+                if(
+                    data.role ===
+                    "ROLE_ADMIN"
+                ){
+
+                    location.href =
+                        "dashboard.html";
+
+                }else if(
+                    data.role ===
+                    "ROLE_LIBRARIAN"
+                ){
+
+                    location.href =
+                        "librarian-dashboard.html";
+
+                }else{
+
+                    location.href =
+                        "member-dashboard.html";
+                }
+
+            }catch(error){
+
+                alert(
+                    "Invalid Email or Password"
+                );
+            }
+        });
+
+</script>
+
+</body>
+</html>

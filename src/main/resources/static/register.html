@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register</title>
+
+    <style>
+        *{
+            margin:0;
+            padding:0;
+            box-sizing:border-box;
+            font-family:'Segoe UI',sans-serif;
+        }
+
+        body{
+            min-height:100vh;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            background:
+                linear-gradient(
+                    135deg,
+                    #2563eb,
+                    #7c3aed
+                );
+            overflow:hidden;
+        }
+
+        body::before{
+            content:"";
+            position:absolute;
+            width:350px;
+            height:350px;
+            background:rgba(255,255,255,.15);
+            border-radius:50%;
+            top:-100px;
+            left:-100px;
+        }
+
+        body::after{
+            content:"";
+            position:absolute;
+            width:300px;
+            height:300px;
+            background:rgba(255,255,255,.1);
+            border-radius:50%;
+            bottom:-100px;
+            right:-80px;
+        }
+
+        .register-card{
+            width:440px;
+            padding:40px;
+            border-radius:24px;
+            background:rgba(255,255,255,.15);
+            backdrop-filter:blur(18px);
+            border:1px solid rgba(255,255,255,.25);
+            box-shadow:0 8px 32px rgba(0,0,0,.2);
+            color:white;
+            position:relative;
+            z-index:10;
+        }
+
+        .logo{
+            text-align:center;
+            font-size:60px;
+            margin-bottom:10px;
+        }
+
+        h2{
+            text-align:center;
+            margin-bottom:8px;
+            font-size:28px;
+        }
+
+        .subtitle{
+            text-align:center;
+            opacity:.9;
+            margin-bottom:28px;
+            font-size:14px;
+        }
+
+        .input-group{
+            margin-bottom:16px;
+        }
+
+        .input-group label{
+            display:block;
+            margin-bottom:6px;
+            font-size:14px;
+            font-weight:500;
+        }
+
+        .input-group input,
+        .input-group select{
+            width:100%;
+            padding:14px;
+            border:none;
+            border-radius:12px;
+            outline:none;
+            background:rgba(255,255,255,.2);
+            color:white;
+            font-size:15px;
+        }
+
+        .input-group input::placeholder{
+            color:rgba(255,255,255,.7);
+        }
+
+        .input-group select option{
+            color:#111827;
+        }
+
+        .input-group input:focus,
+        .input-group select:focus{
+            background:rgba(255,255,255,.3);
+        }
+
+        .register-btn{
+            width:100%;
+            padding:14px;
+            border:none;
+            border-radius:12px;
+            background:white;
+            color:#2563eb;
+            font-size:16px;
+            font-weight:bold;
+            cursor:pointer;
+            transition:.3s;
+            margin-top:6px;
+        }
+
+        .register-btn:hover{
+            transform:translateY(-2px);
+            box-shadow:0 8px 20px rgba(0,0,0,.2);
+        }
+
+        .login-link{
+            text-align:center;
+            margin-top:20px;
+            font-size:14px;
+        }
+
+        .login-link a{
+            color:white;
+            font-weight:bold;
+            text-decoration:none;
+        }
+
+        .login-link a:hover{
+            text-decoration:underline;
+        }
+
+        .footer{
+            margin-top:25px;
+            text-align:center;
+            font-size:12px;
+            opacity:.8;
+        }
+
+        .message{
+            margin-top:12px;
+            text-align:center;
+            font-weight:600;
+        }
+
+        .success{
+            color:#dcfce7;
+        }
+
+        .error{
+            color:#fecaca;
+        }
+
+        @media(max-width:500px){
+            .register-card{
+                width:92%;
+                padding:30px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="register-card">
+
+    <div class="logo">📚</div>
+
+    <h2>Create Account</h2>
+    <p class="subtitle">Register to continue</p>
+
+    <form id="registerForm">
+
+        <div class="input-group">
+            <label>Name</label>
+            <input type="text" id="name" placeholder="Enter your name" required>
+        </div>
+
+        <div class="input-group">
+            <label>Email</label>
+            <input type="email" id="email" placeholder="Enter email" required>
+        </div>
+
+        <div class="input-group">
+            <label>Password</label>
+            <input type="password" id="password" placeholder="Enter password" required>
+        </div>
+
+        <div class="input-group">
+            <label>Role</label>
+            <select id="role" required>
+                <option value="ROLE_MEMBER">Member</option>
+            </select>
+        </div>
+
+        <button type="submit" class="register-btn">
+            Register
+        </button>
+
+        <div id="message" class="message"></div>
+
+    </form>
+
+    <div class="login-link">
+        Already have an account?
+        <a href="index.html">Login</a>
+    </div>
+
+    <div class="footer">
+        © 2026 Library Management System
+    </div>
+
+</div>
+
+<script>
+    const API_BASE = "http://localhost:8080/api";
+
+    const form = document.getElementById("registerForm");
+    const nameInput = document.getElementById("name");
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const roleInput = document.getElementById("role");
+    const messageDiv = document.getElementById("message");
+
+    function showMessage(text, type){
+        messageDiv.className = `message ${type}`;
+        messageDiv.textContent = text;
+    }
+
+    form.addEventListener("submit", async function (e) {
+        e.preventDefault();
+
+        try {
+            showMessage("Registering...", "");
+
+            const response = await fetch(`${API_BASE}/auth/register`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    name: nameInput.value.trim(),
+                    email: emailInput.value.trim(),
+                    password: passwordInput.value,
+                    role: roleInput.value
+                })
+            });
+
+            const text = await response.text();
+
+            if (!response.ok) {
+                throw new Error(text || "Registration failed");
+            }
+
+            showMessage("Registered successfully. Redirecting...", "success");
+
+            setTimeout(() => {
+                window.location.href = "index.html";
+            }, 1200);
+
+        } catch (error) {
+            console.error(error);
+            showMessage(error.message || "Registration failed", "error");
+        }
+    });
+</script>
+
+</body>
+</html>

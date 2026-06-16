@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Book Details</title>
+
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+
+        body{
+            margin:0;
+            background:#f5f7fb;
+            font-family:Arial,sans-serif;
+        }
+
+        nav{
+            background:#2563eb;
+            color:white;
+            padding:15px 25px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+        }
+
+        nav h2{
+            margin:0;
+        }
+
+        nav button{
+            background:white;
+            color:#2563eb;
+            border:none;
+            padding:10px 15px;
+            border-radius:8px;
+            cursor:pointer;
+            font-weight:bold;
+        }
+
+        .container{
+            max-width:900px;
+            margin:30px auto;
+            padding:20px;
+        }
+
+        .card{
+            background:white;
+            padding:25px;
+            border-radius:12px;
+            box-shadow:0 4px 12px rgba(0,0,0,.08);
+        }
+
+        .row{
+            display:grid;
+            grid-template-columns:200px 1fr;
+            padding:12px 0;
+            border-bottom:1px solid #eee;
+        }
+
+        .label{
+            font-weight:bold;
+            color:#555;
+        }
+
+        .value{
+            color:#222;
+        }
+
+        .actions{
+            margin-top:20px;
+            display:flex;
+            gap:10px;
+        }
+
+        .btn{
+            background:#2563eb;
+            color:white;
+            border:none;
+            padding:10px 15px;
+            border-radius:8px;
+            cursor:pointer;
+        }
+
+        .btn:hover{
+            background:#1d4ed8;
+        }
+
+    </style>
+
+</head>
+<body>
+
+<nav>
+
+    <h2>Book Details</h2>
+
+    <button onclick="goBack()">
+        Back
+    </button>
+
+</nav>
+
+<div class="container">
+
+    <div class="card">
+
+        <div class="row">
+            <div class="label">Book ID</div>
+            <div class="value" id="id"></div>
+        </div>
+
+        <div class="row">
+            <div class="label">ISBN</div>
+            <div class="value" id="isbn"></div>
+        </div>
+
+        <div class="row">
+            <div class="label">Title</div>
+            <div class="value" id="title"></div>
+        </div>
+
+        <div class="row">
+            <div class="label">Author</div>
+            <div class="value" id="author"></div>
+        </div>
+
+        <div class="row">
+            <div class="label">Publisher</div>
+            <div class="value" id="publisher"></div>
+        </div>
+
+        <div class="row">
+            <div class="label">Category</div>
+            <div class="value" id="category"></div>
+        </div>
+
+        <div class="row">
+            <div class="label">Total Copies</div>
+            <div class="value" id="totalCopies"></div>
+        </div>
+
+        <div class="row">
+            <div class="label">Available Copies</div>
+            <div class="value" id="availableCopies"></div>
+        </div>
+
+        <div class="actions">
+
+            <button
+                    id="editBtn"
+                    class="btn"
+                    onclick="editBook()">
+                Edit Book
+            </button>
+
+            <button class="btn"
+                    onclick="goBack()">
+                Back
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+    const API_BASE =
+        "http://localhost:8080/api";
+
+    const token =
+        localStorage.getItem("token");
+
+    const role =
+        localStorage.getItem("role");
+
+    if(!token){
+
+        location.href =
+            "index.html";
+    }
+
+    const params =
+        new URLSearchParams(
+            window.location.search
+        );
+
+    const bookId =
+        params.get("id");
+
+    async function loadBook(){
+
+        try{
+
+            console.log(
+                "Book ID:",
+                bookId
+            );
+
+            const response =
+                await fetch(
+                    `${API_BASE}/books/${bookId}`,
+                    {
+                        headers:{
+                            "Authorization":
+                                "Bearer " + token
+                        }
+                    }
+                );
+
+            console.log(
+                "Response Status:",
+                response.status
+            );
+
+            if(!response.ok){
+
+                throw new Error(
+                    "Book not found"
+                );
+            }
+
+            const book =
+                await response.json();
+
+            console.log(
+                "Book Data:",
+                book
+            );
+
+            document.getElementById("id")
+                .innerText =
+                book.id ?? "-";
+
+            document.getElementById("isbn")
+                .innerText =
+                book.isbn ?? "-";
+
+            document.getElementById("title")
+                .innerText =
+                book.title ?? "-";
+
+            document.getElementById("author")
+                .innerText =
+                book.author ?? "-";
+
+            document.getElementById("publisher")
+                .innerText =
+                book.publisher ?? "-";
+
+            document.getElementById("category")
+                .innerText =
+                book.categoryName ??
+                book.category?.name ??
+                "-";
+
+            document.getElementById("totalCopies")
+                .innerText =
+                book.totalCopies ?? "-";
+
+            document.getElementById("availableCopies")
+                .innerText =
+                book.availableCopies ?? "-";
+
+        }
+        catch(error){
+
+            console.error(error);
+
+            alert(
+                "Unable to load book details"
+            );
+        }
+    }
+
+    function editBook(){
+
+        if(
+            role !== "ROLE_ADMIN" &&
+            role !== "ROLE_LIBRARIAN"
+        ){
+
+            alert(
+                "Access Denied"
+            );
+
+            return;
+        }
+
+        location.href =
+            `edit-book.html?id=${bookId}`;
+    }
+
+    function goBack(){
+
+        if(
+            role === "ROLE_ADMIN"
+        ){
+
+            location.href =
+                "dashboard.html";
+        }
+        else if(
+            role === "ROLE_LIBRARIAN"
+        ){
+
+            location.href =
+                "librarian-dashboard.html";
+        }
+        else{
+
+            location.href =
+                "member-dashboard.html";
+        }
+    }
+
+    window.onload = function(){
+
+        if(
+            role !== "ROLE_ADMIN" &&
+            role !== "ROLE_LIBRARIAN"
+        ){
+
+            document.getElementById(
+                "editBtn"
+            ).style.display =
+                "none";
+        }
+
+        loadBook();
+    };
+
+</script>
+</body>
+</html>

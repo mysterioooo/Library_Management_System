@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Categories</title>
+
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+
+        body{
+            background:#f5f7fb;
+            margin:0;
+            font-family:Arial,sans-serif;
+        }
+
+        .topbar{
+            background:#2563eb;
+            color:white;
+            padding:15px 25px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+        }
+
+        .container{
+            padding:25px;
+            max-width:1000px;
+            margin:auto;
+        }
+
+        .card{
+            background:white;
+            padding:20px;
+            border-radius:12px;
+            box-shadow:0 4px 12px rgba(0,0,0,.08);
+            margin-bottom:20px;
+        }
+
+        h3{
+            margin-bottom:15px;
+        }
+
+        .row{
+            display:flex;
+            gap:10px;
+            flex-wrap:wrap;
+        }
+
+        input{
+            flex:1;
+            min-width:250px;
+            padding:12px;
+            border:1px solid #ddd;
+            border-radius:8px;
+        }
+
+        button{
+            background:#2563eb;
+            color:white;
+            border:none;
+            padding:12px 18px;
+            border-radius:8px;
+            cursor:pointer;
+        }
+
+        button:hover{
+            background:#1d4ed8;
+        }
+
+        .refresh-btn{
+            background:#16a34a;
+        }
+
+        .refresh-btn:hover{
+            background:#15803d;
+        }
+
+        table{
+            width:100%;
+            border-collapse:collapse;
+            margin-top:15px;
+        }
+
+        th,td{
+            border:1px solid #e5e7eb;
+            padding:12px;
+            text-align:left;
+        }
+
+        th{
+            background:#eff6ff;
+        }
+
+        .success{
+            color:#16a34a;
+            font-weight:bold;
+            margin-top:15px;
+        }
+
+        .error{
+            color:#dc2626;
+            font-weight:bold;
+            margin-top:15px;
+        }
+
+    </style>
+
+</head>
+<body>
+
+<div class="topbar">
+
+    <h2>Category Management</h2>
+
+    <button onclick="goBack()">
+        Back
+    </button>
+
+</div>
+
+<div class="container">
+
+    <!-- Add Category -->
+
+    <div class="card">
+
+        <h3>Add Category</h3>
+
+        <div class="row">
+
+            <input
+                    id="categoryName"
+                    type="text"
+                    placeholder="Enter Category Name">
+
+            <button onclick="addCategory()">
+                Add Category
+            </button>
+
+        </div>
+
+        <div id="message"></div>
+
+    </div>
+
+    <!-- Category List -->
+
+    <div class="card">
+
+        <div style="
+            display:flex;
+            justify-content:space-between;
+            align-items:center;">
+
+            <h3>All Categories</h3>
+
+            <button
+                    class="refresh-btn"
+                    onclick="loadCategories()">
+                Refresh
+            </button>
+
+        </div>
+
+        <table>
+
+            <thead>
+
+            <tr>
+                <th>ID</th>
+                <th>Category Name</th>
+            </tr>
+
+            </thead>
+
+            <tbody id="categoryBody">
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+<script>
+
+    const API_BASE =
+        "http://localhost:8080/api";
+
+    const token =
+        localStorage.getItem("token");
+
+    const role =
+        localStorage.getItem("role");
+
+        if(!token){
+
+    location.href =
+        "index.html";
+}
+
+    function goBack(){
+
+    if(role === "ROLE_ADMIN"){
+
+        location.href =
+            "dashboard.html";
+
+    }else if(role === "ROLE_LIBRARIAN"){
+
+        location.href =
+            "librarian-dashboard.html";
+
+    }else{
+
+        location.href =
+            "member-dashboard.html";
+    }
+}
+
+    loadCategories();
+
+    async function loadCategories(){
+
+        try{
+
+            const response =
+                await fetch(
+                    `${API_BASE}/categories`,
+                    {
+                        headers:{
+                            "Authorization":
+                                "Bearer " + token
+                        }
+                    });
+
+            if(!response.ok){
+
+                throw new Error(
+                    "Unable to load categories");
+            }
+
+            const categories =
+                await response.json();
+
+            let html = "";
+
+            if(categories.length === 0){
+
+                html = `
+                <tr>
+                    <td colspan="2"
+                        style="text-align:center">
+                        No Categories Found
+                    </td>
+                </tr>
+                `;
+
+            }else{
+
+                categories.forEach(category => {
+
+                    html += `
+                    <tr>
+
+                        <td>${category.id}</td>
+
+                        <td>${category.name}</td>
+
+                    </tr>
+                    `;
+                });
+            }
+
+            document.getElementById(
+                "categoryBody"
+            ).innerHTML = html;
+
+        }catch(error){
+
+            console.error(error);
+
+            showError(
+                "Failed to load categories");
+        }
+    }
+
+    async function addCategory(){
+
+        try{
+
+            const categoryName =
+                document.getElementById(
+                    "categoryName")
+                    .value
+                    .trim();
+
+            if(categoryName === ""){
+
+                showError(
+                    "Category name is required");
+
+                return;
+            }
+
+            const response =
+                await fetch(
+                    `${API_BASE}/categories`,
+                    {
+                        method:"POST",
+
+                        headers:{
+                            "Content-Type":
+                                "application/json",
+
+                            "Authorization":
+                                "Bearer " + token
+                        },
+
+                        body:JSON.stringify({
+                            name:categoryName
+                        })
+                    });
+
+            if(!response.ok){
+
+                const error =
+                    await response.text();
+
+                throw new Error(error);
+            }
+
+            document.getElementById(
+                "categoryName")
+                .value = "";
+
+            showSuccess(
+                "Category Added Successfully");
+
+            loadCategories();
+
+        }catch(error){
+
+            console.error(error);
+
+            showError(
+                error.message ||
+                "Unable to add category");
+        }
+    }
+
+    function showSuccess(message){
+
+        document.getElementById(
+            "message")
+            .innerHTML =
+            `<p class="success">${message}</p>`;
+    }
+
+    function showError(message){
+
+        document.getElementById(
+            "message")
+            .innerHTML =
+            `<p class="error">${message}</p>`;
+    }
+
+   function goBack(){
+
+    if(role === "ROLE_ADMIN"){
+
+        location.href =
+            "dashboard.html";
+    }
+    else if(role === "ROLE_LIBRARIAN"){
+
+        location.href =
+            "librarian-dashboard.html";
+    }
+    else{
+
+        location.href =
+            "member-dashboard.html";
+    }
+}
+
+
+
+</script>
+
+</body>
+</html>

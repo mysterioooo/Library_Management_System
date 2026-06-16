@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>QR Payment</title>
+
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+
+        body{
+            margin:0;
+            background:#f5f7fb;
+            font-family:Arial,sans-serif;
+        }
+
+        nav{
+            background:#2563eb;
+            color:white;
+            padding:15px 25px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+        }
+
+        nav button{
+            background:white;
+            color:#2563eb;
+            border:none;
+            padding:10px 15px;
+            border-radius:8px;
+            cursor:pointer;
+        }
+
+        .container{
+            max-width:700px;
+            margin:40px auto;
+            padding:20px;
+        }
+
+        .card{
+            background:white;
+            padding:30px;
+            border-radius:12px;
+            text-align:center;
+            box-shadow:0 4px 12px rgba(0,0,0,.08);
+        }
+
+        img{
+            width:300px;
+            height:300px;
+            object-fit:contain;
+            margin:20px 0;
+        }
+
+        h2{
+            color:#2563eb;
+        }
+
+        p{
+            color:#555;
+        }
+
+        .btn{
+            background:#2563eb;
+            color:white;
+            border:none;
+            padding:12px 18px;
+            border-radius:8px;
+            cursor:pointer;
+            margin:5px;
+        }
+
+        .btn:hover{
+            background:#1d4ed8;
+        }
+
+    </style>
+
+</head>
+<body>
+
+<nav>
+
+    <h2>Fine QR Payment</h2>
+
+    <button onclick="goBack()">
+        Back
+    </button>
+
+</nav>
+
+<div class="container">
+
+    <div class="card">
+
+        <h2>Scan QR Code</h2>
+
+        <p>
+            Scan this QR code using any payment app.
+        </p>
+
+        <img
+                id="qrImage"
+                alt="QR Code">
+
+        <br>
+
+        <button
+                class="btn"
+                onclick="downloadQR()">
+            Download QR
+        </button>
+
+        <button
+                class="btn"
+                onclick="goBack()">
+            Back To Fines
+        </button>
+
+    </div>
+
+</div>
+
+<script>
+
+    const API_BASE =
+        "http://localhost:8080/api";
+
+    const token =
+        localStorage.getItem("token");
+
+    const role =
+        localStorage.getItem("role");
+
+    if(!token){
+
+        location.href =
+            "index.html";
+    }
+
+    const params =
+        new URLSearchParams(
+            window.location.search);
+
+    const fineId =
+        params.get("fineId");
+
+    if(!fineId){
+
+        alert("Invalid Fine ID");
+
+        goBack();
+    }
+
+    const qrUrl =
+        `${API_BASE}/fines/qr/${fineId}`;
+
+    loadQR();
+
+    async function loadQR(){
+
+        try{
+
+            const response =
+                await fetch(
+                    qrUrl,
+                    {
+                        headers:{
+                            "Authorization":
+                                "Bearer " + token
+                        }
+                    });
+
+            if(!response.ok){
+
+                throw new Error(
+                    "Unable to load QR");
+            }
+
+            const blob =
+                await response.blob();
+
+            const imageUrl =
+                URL.createObjectURL(blob);
+
+            document.getElementById(
+                "qrImage"
+            ).src = imageUrl;
+
+        }catch(error){
+
+            console.error(error);
+
+            alert(
+                "Unable to load QR Code");
+        }
+    }
+
+    async function downloadQR(){
+
+        try{
+
+            const response =
+                await fetch(
+                    qrUrl,
+                    {
+                        headers:{
+                            "Authorization":
+                                "Bearer " + token
+                        }
+                    });
+
+            if(!response.ok){
+
+                throw new Error(
+                    "Download failed");
+            }
+
+            const blob =
+                await response.blob();
+
+            const url =
+                URL.createObjectURL(blob);
+
+            const link =
+                document.createElement("a");
+
+            link.href = url;
+
+            link.download =
+                `fine-${fineId}-qr.png`;
+
+            document.body
+                .appendChild(link);
+
+            link.click();
+
+            document.body
+                .removeChild(link);
+
+            URL.revokeObjectURL(url);
+
+        }catch(error){
+
+            console.error(error);
+
+            alert(
+                "Unable to download QR");
+        }
+    }
+
+    function goBack(){
+
+        if(
+            role === "ROLE_ADMIN"
+        ){
+
+            location.href =
+                "dashboard.html";
+        }
+        else if(
+            role === "ROLE_LIBRARIAN"
+        ){
+
+            location.href =
+                "librarian-dashboard.html";
+        }
+        else{
+
+            location.href =
+                "fine-payment.html";
+        }
+    }
+
+</script>
+
+</body>
+</html>
